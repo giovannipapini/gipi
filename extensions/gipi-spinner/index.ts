@@ -1,5 +1,5 @@
 /**
- * Spinner Verbs Extension
+ * gipi-spinner Extension
  *
  * An animated, context-aware spinner with rotating witty verbs — like a sarcastic
  * co-worker narrating what you're doing. Each tool gets a set of verbs that cycle
@@ -31,7 +31,7 @@
  *   /spinner frames <chars>              — custom spinner animation frames
  *   /spinner interval <ms>               — spinner frame interval
  *
- * Placement: ~/.pi/agent/extensions/spinner-verbs (via Dotbot)
+ * Placement: ~/.pi/agent/extensions/gipi-spinner (via Dotbot)
  */
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
@@ -199,12 +199,12 @@ export default function extension(pi: ExtensionAPI) {
 
   function updateVerb(ctx: ExtensionContext, verb: string) {
     ctx.ui.setWorkingMessage(`${verb}…`)
-    ctx.ui.setStatus('spinner', statusLabel(verb))
+    ctx.ui.setStatus('gipi-spinner', statusLabel(verb))
   }
 
   function clearVerb(ctx: ExtensionContext) {
     ctx.ui.setWorkingMessage('')
-    ctx.ui.setStatus('spinner', undefined)
+    ctx.ui.setStatus('gipi-spinner', undefined)
   }
 
   function verbForTool(toolName: string): string {
@@ -230,7 +230,7 @@ export default function extension(pi: ExtensionAPI) {
 
     ctx.ui.setWorkingIndicator({ frames, intervalMs })
     ctx.ui.setWorkingMessage('')
-    ctx.ui.setStatus('spinner', undefined)
+    ctx.ui.setStatus('gipi-spinner', undefined)
   })
 
   pi.on('session_shutdown', async (_event, ctx) => {

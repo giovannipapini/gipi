@@ -1,5 +1,5 @@
 /**
- * Context7 Documentation Extension (ctx7-docs)
+ * gipi-docquery Extension
  *
  * Integrates Context7's library documentation API as pi tools.
  * Focused solely on documentation — no skills management.
@@ -10,7 +10,7 @@
  *
  * Requires CONTEXT7_API_KEY in environment (https://context7.com/dashboard)
  *
- * Placement: ~/.pi/agent/extensions/ctx7-docs/index.ts (global)
+ * Placement: ~/.pi/agent/extensions/gipi-docquery/index.ts (global)
  */
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
@@ -352,7 +352,7 @@ export default function extension(pi: ExtensionAPI) {
           'warning',
         )
       }
-      ctx.ui.setStatus('ctx7', 'ctx7 ✓ ·')
+      ctx.ui.setStatus('gipi-docquery', 'ctx7 ✓ ·')
     } else {
       ctx.ui.notify(
         'ctx7 docs loaded — set CONTEXT7_API_KEY to enable library documentation queries',
@@ -362,6 +362,6 @@ export default function extension(pi: ExtensionAPI) {
   })
 
   pi.on('session_shutdown', async (_event, ctx: ExtensionContext) => {
-    ctx.ui.setStatus('ctx7', undefined)
+    ctx.ui.setStatus('gipi-docquery', undefined)
   })
 }

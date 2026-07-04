@@ -1,5 +1,5 @@
 /**
- * Web Extension — Exa + Firecrawl
+ * gipi-webx Extension — Exa + Firecrawl
  *
  * One web-research toolkit that routes each task to the provider that does it
  * best: Exa for neural search / cited answers / similar-page discovery,
@@ -19,7 +19,7 @@
  *   web_map      — list all URLs on a site     (Firecrawl)
  *   web_crawl    — crawl a site's pages        (Firecrawl)
  *
- * Placement: ~/.pi/agent/extensions/web/index.ts (global, via Dotbot)
+ * Placement: ~/.pi/agent/extensions/gipi-webx/index.ts (global, via Dotbot)
  */
 
 import { StringEnum } from '@earendil-works/pi-ai'
@@ -680,18 +680,18 @@ export default function extension(pi: ExtensionAPI) {
 
     const active = [exa && 'exa', fc && 'fc'].filter(Boolean) as string[]
     if (active.length) {
-      ctx.ui.setStatus('web', `web ${active.join('+')} ✓`)
+      ctx.ui.setStatus('gipi-webx', `web ${active.join('+')} ✓`)
     } else {
       ctx.ui.notify(
         'Web extension loaded, but neither EXA_API_KEY nor FIRECRAWL_API_KEY is set — tools are disabled.',
         'warning',
       )
-      ctx.ui.setStatus('web', 'web ⚠')
+      ctx.ui.setStatus('gipi-webx', 'web ⚠')
     }
   })
 
   pi.on('session_shutdown', async (_event, ctx: ExtensionContext) => {
-    ctx.ui.setStatus('web', undefined)
+    ctx.ui.setStatus('gipi-webx', undefined)
   })
 }
 

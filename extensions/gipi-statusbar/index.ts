@@ -1,5 +1,5 @@
 /**
- * Footer extension — replaces the built-in pi footer with a richer status line.
+ * gipi-statusbar extension — replaces the built-in pi footer with a richer status line.
  *
  * Layout:
  *   dir │ model │ think:high │ ctx [▓▓▓░░░░░] 42% (85k/200k) │ $0.003 │ branch ~2 ?1 ↑1 │ +10/-5
@@ -163,7 +163,7 @@ export default function extension(pi: ExtensionAPI) {
 
   // --- Shortcuts ---
 
-  // External shortcuts from other extensions (confirm-tool-calls)
+  // External shortcuts from other extensions (gipi-safety)
   shortcutHints.push({ display: 'ctrl+shift+e', label: 'confirm' })
   shortcutHints.push({ display: 'ctrl+shift+w', label: 'writes' })
 

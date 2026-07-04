@@ -28,7 +28,7 @@ function findPositions(content: string, target: string): number[] {
   return positions
 }
 
-export default function editUniquenessGuard(pi: ExtensionAPI) {
+export default function gipiDedup(pi: ExtensionAPI) {
   pi.on('tool_call', async (event, ctx) => {
     if (!isToolCallEventType('edit', event)) return
     // event.input is now typed as EditToolInput:

@@ -4,7 +4,7 @@ import { getAgentDir } from '@earendil-works/pi-coding-agent'
 import type { Job } from './types.js'
 
 function base(): string {
-  return join(getAgentDir(), 'bash-async')
+  return join(getAgentDir(), 'gipi-background')
 }
 
 export function sessionDir(sessionId: string): string {

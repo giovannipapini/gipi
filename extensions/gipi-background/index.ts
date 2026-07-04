@@ -1,5 +1,5 @@
 /**
- * bash-async Extension
+ * gipi-background Extension
  *
  * Two tools: `bash_async` spawns a long-running shell command and returns
  * immediately; `bash_async_manage` reads stdout/stderr, kills, or lists jobs
@@ -8,11 +8,11 @@
  * A `/jobs` command opens an interactive TUI manager for the user to browse,
  * live-tail, and kill background jobs without spending an agent turn.
  *
- * Jobs are session-scoped: logs spool to <agentDir>/bash-async/<sessionId>/,
+ * Jobs are session-scoped: logs spool to <agentDir>/gipi-background/<sessionId>/,
  * registry is persisted to jobs.json. The whole tree is killed on quit; on
  * /reload (and session replacement) jobs survive and are re-attached.
  *
- * Placement: ~/.pi/agent/extensions/bash-async/index.ts (symlinked from dotfiles).
+ * Placement: ~/.pi/agent/extensions/gipi-background/index.ts (symlinked from dotfiles).
  */
 
 import { StringEnum } from '@earendil-works/pi-ai'
@@ -91,9 +91,9 @@ export default function extension(pi: ExtensionAPI) {
     const id = ctx.sessionManager.getSessionId()
     if (registry && sessionId === id) return registry
     sessionId = id
-    registry = createRegistry(id, () => ctx.ui.setStatus('bash-async', statusLabel(registry)))
+    registry = createRegistry(id, () => ctx.ui.setStatus('gipi-background', statusLabel(registry)))
     registry.restoreFromDisk(loadJobs(id))
-    ctx.ui.setStatus('bash-async', statusLabel(registry))
+    ctx.ui.setStatus('gipi-background', statusLabel(registry))
     return registry
   }
 
@@ -371,11 +371,11 @@ export default function extension(pi: ExtensionAPI) {
   pi.on('session_tree', async (_event, ctx) => {
     // Same session, same jobs — just refresh the status label binding.
     ensureRegistry(ctx)
-    ctx.ui.setStatus('bash-async', statusLabel(registry))
+    ctx.ui.setStatus('gipi-background', statusLabel(registry))
   })
 
   pi.on('session_shutdown', async (event, ctx) => {
-    ctx.ui.setStatus('bash-async', undefined)
+    ctx.ui.setStatus('gipi-background', undefined)
     if (!registry || !sessionId) return
     // Only tear down for real exits. Reload/replacement keep the persisted
     // registry on disk so jobs can be re-attached by the next session_start.

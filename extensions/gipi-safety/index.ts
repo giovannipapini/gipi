@@ -133,7 +133,7 @@ export default function (pi: ExtensionAPI) {
 
   function updateStatus(ctx: ExtensionContext) {
     ctx.ui.setStatus(
-      'confirm-tools',
+      'gipi-safety',
       enabled ? statusLabel() : `${YELLOW}🤖 auto-approve ✓${RESET} ·`,
     )
   }
@@ -230,7 +230,7 @@ export default function (pi: ExtensionAPI) {
   })
 
   pi.on('session_shutdown', async (_event, ctx) => {
-    ctx.ui.setStatus('confirm-tools', undefined)
+    ctx.ui.setStatus('gipi-safety', undefined)
   })
 
   pi.on('tool_call', async (event, ctx) => {
