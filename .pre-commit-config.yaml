@@ -9,6 +9,18 @@ repos:
       - id: mixed-line-ending
         args: [--fix=lf]
       - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=512]
+      - id: detect-private-key
+      - id: check-case-conflict
+
+  # Gitleaks — detect hardcoded secrets (API keys, tokens)
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.23.2
+    hooks:
+      - id: gitleaks
 
   # Biome — lint + format all extensions and themes
   - repo: local
