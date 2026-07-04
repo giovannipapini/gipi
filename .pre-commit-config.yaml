@@ -1,0 +1,20 @@
+# See https://pre-commit.com — install with: pre-commit install
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+
+  # Biome — lint + format all extensions and themes
+  - repo: local
+    hooks:
+      - id: biome-check
+        name: biome check
+        entry: /opt/homebrew/bin/biome check --write --files-ignore-unknown=true --no-errors-on-unmatched
+        language: system
+        types: [text]
