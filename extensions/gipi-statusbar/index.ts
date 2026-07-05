@@ -9,7 +9,7 @@
  *   pi (●) § <fullpath> § <model> § <branch> § think:<level>
  *
  * Status bar layout:
- *   ~/project § model § think:high § ctx [▓▓▓░░░░░] 42% (85k/200k) § $— § branch ~2 ?1 ↑1 § +10/-5
+ *   ~/project │ model │ think:high │ ctx [▓▓▓░░░░░] 42% (85k/200k) │ $— │ branch ~2 ?1 ↑1 │ +10/-5
  *                                               [extension statuses on the right]
  *
  * Hints row below the status bar shows key bindings at a glance.
@@ -270,7 +270,7 @@ export default function extension(pi: ExtensionAPI) {
         },
         invalidate() {},
         render(width: number): string[] {
-          const sep = theme.fg('dim', ' § ')
+          const sep = theme.fg('dim', ' │ ')
 
           const dir = displayPath(ctx.cwd)
           const dirSegment = theme.fg('accent', dir)
