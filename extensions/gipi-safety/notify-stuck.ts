@@ -39,6 +39,10 @@ function terminalAppName(): string | null {
  * Uses `lsappinfo` on macOS which is faster and more reliable than an
  * osascript/System Events round-trip (no process-launch delay).
  *
+ * `lsappinfo front` returns an Application Serial Number (ASN), e.g.
+ * `ASN:0x0-0x25025:`. We pass it directly to `lsappinfo info` — no need
+ * to parse a PID.
+ *
  * Falls back to `true` (assume focused) on non-macOS or any error —
  * meaning no notification is sent in those cases.
  */
@@ -47,14 +51,14 @@ export function isTerminalFocused(): boolean {
   if (!appName) return true
 
   try {
-    const pid = execSync('lsappinfo front', {
+    const asn = execSync('lsappinfo front', {
       timeout: 1000,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'ignore'],
     }).trim()
-    if (!pid || !/^\d+$/.test(pid)) return true
+    if (!asn) return true
 
-    const info = execSync(`lsappinfo info -only name ${pid}`, {
+    const info = execSync(`lsappinfo info -only name ${asn}`, {
       timeout: 1000,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'ignore'],
