@@ -107,7 +107,7 @@ export default function extension(pi: ExtensionAPI) {
         pi.exec('git', ['rev-list', '--count', 'HEAD..@{u}'], { cwd }),
       ])
 
-      if (statusRes.exitCode !== 0) {
+      if (statusRes.code !== 0) {
         gitState = null
         requestRender()
         return
@@ -122,8 +122,8 @@ export default function extension(pi: ExtensionAPI) {
       const linesAdded = addMatch ? parseInt(addMatch[1], 10) : 0
       const linesRemoved = remMatch ? parseInt(remMatch[1], 10) : 0
 
-      const ahead = aheadRes.exitCode === 0 ? parseInt(aheadRes.stdout.trim(), 10) || 0 : 0
-      const behind = behindRes.exitCode === 0 ? parseInt(behindRes.stdout.trim(), 10) || 0 : 0
+      const ahead = aheadRes.code === 0 ? parseInt(aheadRes.stdout.trim(), 10) || 0 : 0
+      const behind = behindRes.code === 0 ? parseInt(behindRes.stdout.trim(), 10) || 0 : 0
 
       gitState = { dirty, untracked, ahead, behind, linesAdded, linesRemoved }
     } catch {

@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 import { isToolCallEventType } from '@earendil-works/pi-coding-agent'
 import { Key } from '@earendil-works/pi-tui'
-import type { Plugin } from './plugin.js'
+import type { Plugin, PluginResult } from './plugin.js'
 import { safeRulesPlugin } from './plugin-safe-rules.js'
 import { substitutionPlugin } from './plugin-substitutions.js'
 import {
@@ -266,7 +266,13 @@ export default function (pi: ExtensionAPI) {
       if (!command) return
       for (const plugin of PLUGINS) {
         const session = pluginSessions.get(plugin.name) ?? new Map<string, string>()
-        const result = await plugin.guardShell?.(event.toolName, command, ctx, session)
+        // biome-ignore lint/suspicious/noExplicitAny: Plugin type guardShell has type inference issue with ToolCallEvent union
+        const result: PluginResult = await (plugin.guardShell as any)?.(
+          event.toolName,
+          command,
+          ctx,
+          session,
+        )
         if (result === undefined) continue // no opinion — try next plugin
         if ('allow' in result) break // handled + allowed — stop chain
         if (result.steer) pi.sendUserMessage(result.steer, { deliverAs: 'steer' })

@@ -65,12 +65,12 @@ const STATUS_GLYPH: Record<Job['status'], string> = {
   failed: '✗',
 }
 
-const STATUS_COLOR: Record<Job['status'], string> = {
+const STATUS_COLOR = {
   running: 'accent',
   exited: 'success',
   killed: 'warning',
   failed: 'error',
-}
+} as const satisfies Record<Job['status'], string>
 
 const MANAGER_TAIL_BYTES = 64 * 1024
 const MANAGER_OUTPUT_LINES = 18
@@ -91,7 +91,8 @@ export default function extension(pi: ExtensionAPI) {
     const id = ctx.sessionManager.getSessionId()
     if (registry && sessionId === id) return registry
     sessionId = id
-    registry = createRegistry(id, () => ctx.ui.setStatus('gipi-background', statusLabel(registry)))
+    const reg = createRegistry(id, () => ctx.ui.setStatus('gipi-background', statusLabel(reg)))
+    registry = reg
     registry.restoreFromDisk(loadJobs(id))
     ctx.ui.setStatus('gipi-background', statusLabel(registry))
     return registry
@@ -152,7 +153,7 @@ export default function extension(pi: ExtensionAPI) {
         outPrev ? `--- stdout (preview) ---\n${outPrev}` : `(no stdout yet)`,
         errPrev ? `--- stderr (preview) ---\n${errPrev}` : `(no stderr yet)`,
       ].join('\n')
-      return { content: [{ type: 'text', text }] }
+      return { content: [{ type: 'text', text }], details: {} }
     },
   })
 
@@ -188,8 +189,9 @@ export default function extension(pi: ExtensionAPI) {
 
       if (action === 'list') {
         const all = reg.getAll()
-        if (all.length === 0) return { content: [{ type: 'text', text: '(no background jobs)' }] }
-        return { content: [{ type: 'text', text: all.map(fmtJob).join('\n') }] }
+        if (all.length === 0)
+          return { content: [{ type: 'text', text: '(no background jobs)' }], details: {} }
+        return { content: [{ type: 'text', text: all.map(fmtJob).join('\n') }], details: {} }
       }
 
       if (action === 'kill') {
@@ -202,13 +204,14 @@ export default function extension(pi: ExtensionAPI) {
                 text: `${job.id} already ${job.status} (exit=${job.exitCode ?? '?'})`,
               },
             ],
+            details: {},
           }
         }
         const ok = reg.killJob(job.id, 'SIGTERM')
         const text = ok
           ? `Sent SIGTERM to ${job.id} (pid=${job.pid}). Will SIGKILL after 1s if still alive.`
           : `Could not signal ${job.id} (pid=${job.pid}) — process may have already exited.`
-        return { content: [{ type: 'text', text }] }
+        return { content: [{ type: 'text', text }], details: {} }
       }
 
       if (action !== 'stdout' && action !== 'stderr') {
@@ -236,7 +239,7 @@ export default function extension(pi: ExtensionAPI) {
       const truncated = trunc.truncated ? ` truncated` : ''
       const header = `[${job.id} ${action} status=${job.status} bytes=${r.bytesRead} file_size=${r.fileSize}${skipped}${truncated}]`
       const body = trunc.content || '(no new output)'
-      return { content: [{ type: 'text', text: `${header}\n${body}` }] }
+      return { content: [{ type: 'text', text: `${header}\n${body}` }], details: {} }
     },
   })
 
@@ -370,8 +373,8 @@ export default function extension(pi: ExtensionAPI) {
 
   pi.on('session_tree', async (_event, ctx) => {
     // Same session, same jobs — just refresh the status label binding.
-    ensureRegistry(ctx)
-    ctx.ui.setStatus('gipi-background', statusLabel(registry))
+    const reg = ensureRegistry(ctx)
+    ctx.ui.setStatus('gipi-background', statusLabel(reg))
   })
 
   pi.on('session_shutdown', async (event, ctx) => {

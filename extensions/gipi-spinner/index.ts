@@ -361,11 +361,11 @@ export default function extension(pi: ExtensionAPI) {
     },
     getArgumentCompletions: (prefix) => {
       const p = prefix.toLowerCase()
-      const suggestions: string[] = []
+      const suggestions: Array<{ value: string; label: string; description?: string }> = []
 
       const cmds = ['list', 'set ', 'add ', 'reset', 'frames ', 'interval ']
       for (const c of cmds) {
-        if (c.startsWith(p)) suggestions.push(c)
+        if (c.startsWith(p)) suggestions.push({ value: c, label: c })
       }
 
       if (p.startsWith('set ') || p.startsWith('add ')) {
@@ -374,7 +374,7 @@ export default function extension(pi: ExtensionAPI) {
         for (const tool of Object.keys(verbSets)) {
           if (tool.startsWith(toolPrefix)) {
             const cmdName = p.startsWith('set ') ? 'set ' : 'add '
-            suggestions.push(`${cmdName}${tool} `)
+            suggestions.push({ value: `${cmdName}${tool} `, label: `${cmdName}${tool} ` })
           }
         }
       }

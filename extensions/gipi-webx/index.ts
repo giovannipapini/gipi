@@ -456,7 +456,8 @@ export default function extension(pi: ExtensionAPI) {
           isFailed: (d) => d.status === 'failed',
           maxWaitMs: CRAWL_MAX_WAIT_MS,
           pollIntervalMs: CRAWL_POLL_MS,
-          onProgress: (msg) => onUpdate?.({ content: [{ type: 'text', text: msg }] }),
+          onProgress: (msg) =>
+            onUpdate?.({ content: [{ type: 'text' as const, text: msg }], details: {} }),
         },
       )
 
