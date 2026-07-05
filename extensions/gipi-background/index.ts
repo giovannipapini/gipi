@@ -40,7 +40,7 @@ const PREVIEW_LINES = 20
 const DEFAULT_TAIL_BYTES = 16 * 1024
 const MAX_TAIL_BYTES = 256 * 1024
 
-function fmtJob(j: Job): string {
+function formatJob(j: Job): string {
   const dur = ((j.endedAt ?? Date.now()) - j.startedAt) / 1000
   const exit = j.exitCode === undefined || j.exitCode === null ? '' : ` exit=${j.exitCode}`
   return `${j.id} pid=${j.pid} status=${j.status}${exit} dur=${dur.toFixed(1)}s cwd=${j.cwd}\n  $ ${j.command}`
@@ -76,7 +76,7 @@ const MANAGER_TAIL_BYTES = 64 * 1024
 const MANAGER_OUTPUT_LINES = 18
 const MANAGER_POLL_MS = 700
 
-function fmtDur(j: Job): string {
+function formatDuration(j: Job): string {
   const s = ((j.endedAt ?? Date.now()) - j.startedAt) / 1000
   if (s < 60) return `${s.toFixed(0)}s`
   if (s < 3600) return `${Math.floor(s / 60)}m${Math.floor(s % 60)}s`
@@ -191,7 +191,7 @@ export default function extension(pi: ExtensionAPI) {
         const all = reg.getAll()
         if (all.length === 0)
           return { content: [{ type: 'text', text: '(no background jobs)' }], details: {} }
-        return { content: [{ type: 'text', text: all.map(fmtJob).join('\n') }], details: {} }
+        return { content: [{ type: 'text', text: all.map(formatJob).join('\n') }], details: {} }
       }
 
       if (action === 'kill') {
@@ -335,7 +335,7 @@ export default function extension(pi: ExtensionAPI) {
               const glyph = theme.fg(STATUS_COLOR[j.status], STATUS_GLYPH[j.status])
               const exit =
                 j.exitCode === undefined || j.exitCode === null ? '' : ` exit=${j.exitCode}`
-              const meta = theme.fg('muted', `${j.status}${exit} ${fmtDur(j)}`)
+              const meta = theme.fg('muted', `${j.status}${exit} ${formatDuration(j)}`)
               const cmd = sel ? theme.fg('text', j.command) : theme.fg('dim', j.command)
               const prefix = sel ? theme.fg('accent', '> ') : '  '
               add(`${prefix}${glyph} ${theme.fg(sel ? 'accent' : 'text', j.id)} ${meta}  $ ${cmd}`)

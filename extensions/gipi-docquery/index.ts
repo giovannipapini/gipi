@@ -29,18 +29,12 @@ import {
   safeParse,
 } from '../../lib/parse.js'
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
 const API_BASE = 'https://context7.com/api/v2'
-
-// ── Auth headers ───────────────────────────────────────────────────────────
 
 function authHeaders(): Record<string, string> {
   const key = requireEnvKey('CONTEXT7_API_KEY', 'https://context7.com/dashboard')
   return { Authorization: `Bearer ${key}` }
 }
-
-// ── Formatting ─────────────────────────────────────────────────────────────
 
 function versionTag(versions: string[]): string {
   if (!versions || versions.length === 0) return ''
@@ -48,7 +42,7 @@ function versionTag(versions: string[]): string {
   return sorted.slice(0, 3).join(', ')
 }
 
-function fmtLibrary(lib: Ctx7Library): string {
+function formatLibrary(lib: Ctx7Library): string {
   const lines: string[] = []
   lines.push(`  ${lib.title}`)
   lines.push(`  ID    : ${lib.id}`)
@@ -66,12 +60,12 @@ function fmtLibrary(lib: Ctx7Library): string {
   return lines.join('\n')
 }
 
-function fmtLibraries(libs: Ctx7Library[]): string {
+function formatLibraries(libs: Ctx7Library[]): string {
   if (libs.length === 0) return 'No libraries found.'
-  return libs.map((lib, i) => `${i + 1}.${fmtLibrary(lib)}`).join('\n\n')
+  return libs.map((lib, i) => `${i + 1}.${formatLibrary(lib)}`).join('\n\n')
 }
 
-function fmtCodeSnippet(s: z.infer<typeof Ctx7CodeSnippet>): string {
+function formatCodeSnippet(s: z.infer<typeof Ctx7CodeSnippet>): string {
   const lines: string[] = []
   lines.push(`### ${s.codeTitle}`)
   if (s.codeDescription) lines.push(`\n${s.codeDescription}`)
@@ -84,26 +78,24 @@ function fmtCodeSnippet(s: z.infer<typeof Ctx7CodeSnippet>): string {
   return lines.join('\n')
 }
 
-function fmtInfoSnippet(s: z.infer<typeof Ctx7InfoSnippet>): string {
+function formatInfoSnippet(s: z.infer<typeof Ctx7InfoSnippet>): string {
   const lines: string[] = []
   if (s.breadcrumb) lines.push(`### ${s.breadcrumb}`)
   lines.push(s.content)
   return lines.join('\n\n')
 }
 
-function fmtDocs(docs: z.infer<typeof Ctx7DocsResponse>): string {
+function formatDocs(docs: z.infer<typeof Ctx7DocsResponse>): string {
   const parts: string[] = []
 
-  // Info snippets first (documentation)
   if (docs.infoSnippets?.length) {
-    const infoBlocks = docs.infoSnippets.map(fmtInfoSnippet)
+    const infoBlocks = docs.infoSnippets.map(formatInfoSnippet)
     parts.push('## Documentation\n')
     parts.push(infoBlocks.join('\n\n---\n\n'))
   }
 
-  // Code snippets (examples)
   if (docs.codeSnippets?.length) {
-    const codeBlocks = docs.codeSnippets.map((s) => fmtCodeSnippet(s))
+    const codeBlocks = docs.codeSnippets.map((s) => formatCodeSnippet(s))
     parts.push('\n## Code Examples\n')
     parts.push(codeBlocks.join('\n\n---\n\n'))
   }
@@ -113,11 +105,7 @@ function fmtDocs(docs: z.infer<typeof Ctx7DocsResponse>): string {
   return parts.join('\n')
 }
 
-// ── Extension ──────────────────────────────────────────────────────────────
-
 export default function extension(pi: ExtensionAPI) {
-  // ── Tool: ctx7_library ───────────────────────────────────────────────
-
   pi.registerTool({
     name: 'ctx7_library',
     label: 'Context7 Library Search',
@@ -148,7 +136,7 @@ export default function extension(pi: ExtensionAPI) {
       const { data } = await jsonGet(url.toString(), { headers: authHeaders() }, signal)
 
       const parsed = safeParse(Ctx7LibrarySearchResponse, data, { results: [] })
-      const text = truncateForTool(fmtLibraries(parsed.results))
+      const text = truncateForTool(formatLibraries(parsed.results))
 
       return {
         content: [{ type: 'text', text }],
@@ -156,8 +144,6 @@ export default function extension(pi: ExtensionAPI) {
       }
     },
   })
-
-  // ── Tool: ctx7_docs ───────────────────────────────────────────────────
 
   pi.registerTool({
     name: 'ctx7_docs',
@@ -189,7 +175,7 @@ export default function extension(pi: ExtensionAPI) {
       const { data } = await jsonGet(url.toString(), { headers: authHeaders() }, signal)
 
       const parsed = safeParse(Ctx7DocsResponse, data, {})
-      const text = truncateForTool(fmtDocs(parsed))
+      const text = truncateForTool(formatDocs(parsed))
 
       return {
         content: [{ type: 'text', text }],
@@ -203,8 +189,6 @@ export default function extension(pi: ExtensionAPI) {
     },
   })
 
-  // ?docs <library> [topic] — expand a terse prompt into a reliable two-step
-  // ctx7 lookup: resolve the ID first, then query docs. Typed input only.
   pi.on('input', async (event) => {
     if (event.source !== 'interactive') return { action: 'continue' }
     const m = event.text.match(/^\?docs\s+(\S+)\s*(.*)$/)
@@ -220,8 +204,6 @@ export default function extension(pi: ExtensionAPI) {
         `concise code examples, citing the snippet sources.`,
     }
   })
-
-  // ── Status indicator ──────────────────────────────────────────────────
 
   pi.on('session_start', async (_event, ctx: ExtensionContext) => {
     const key = optionalKey('CONTEXT7_API_KEY')

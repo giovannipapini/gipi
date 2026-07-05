@@ -36,8 +36,6 @@
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 
-// -- Defaults ----------------------------------------------------------------
-
 const BRAILLE_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 const DEFAULT_INTERVAL_MS = 100
 
@@ -147,10 +145,7 @@ const FALLBACK_VERBS = [
   'Faking it till I make it',
 ]
 
-// -- Extension ---------------------------------------------------------------
-
 export default function extension(pi: ExtensionAPI) {
-  // Mutable state
   const verbSets: Record<string, string[]> = {}
   for (const [k, v] of Object.entries(DEFAULT_VERBS)) verbSets[k] = [...v]
 
@@ -161,12 +156,8 @@ export default function extension(pi: ExtensionAPI) {
   let intervalMs = DEFAULT_INTERVAL_MS
   let activeToolCalls = 0
 
-  // Rotation tracking: per-tool index + index for thinking/fallback
   const toolIndices: Record<string, number> = {}
   let thinkingIndex = 0
-  let _fallbackIndex = 0
-
-  // -- Helpers ---------------------------------------------------------------
 
   /** Fisher-Yates shuffle (in-place, returns same reference). */
   function shuffleInPlace<T>(arr: T[]): T[] {
@@ -216,8 +207,6 @@ export default function extension(pi: ExtensionAPI) {
     return verb
   }
 
-  // -- Event hooks ---------------------------------------------------------
-
   pi.on('session_start', async (_event, ctx) => {
     activeToolCalls = 0
 
@@ -257,8 +246,6 @@ export default function extension(pi: ExtensionAPI) {
       updateVerb(ctx, nextThinkingVerb())
     }
   })
-
-  // -- /spinner command ----------------------------------------------------
 
   function verbEntry(key: string, verbs: string[]): string {
     const header = `  ${key.padEnd(22)} → `
@@ -314,7 +301,6 @@ export default function extension(pi: ExtensionAPI) {
         fallbackVerbs.length = 0
         fallbackVerbs.push(...FALLBACK_VERBS)
         thinkingIndex = 0
-        _fallbackIndex = 0
         frames = [...BRAILLE_FRAMES]
         intervalMs = DEFAULT_INTERVAL_MS
         ctx.ui.setWorkingIndicator({ frames, intervalMs })

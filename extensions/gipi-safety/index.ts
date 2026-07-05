@@ -37,7 +37,7 @@ function isPipelineSafe(command: string): boolean {
   )
 }
 
-type Inp = Record<string, unknown>
+type InputRecord = Record<string, unknown>
 
 interface Stats {
   auto: number
@@ -50,26 +50,26 @@ type GuardResult = { block: true; reason: string } | { steer: string } | undefin
 // To add a new shell tool: add one entry below. The handler is generic over these configs.
 interface ShellConfig {
   allowed: Set<string>
-  keyOf(cmd: string, inp: Inp): string
-  cwdOf?(inp: Inp): string | undefined
-  envOf?(inp: Inp): Record<string, string> | undefined
+  keyOf(cmd: string, inp: InputRecord): string
+  cwdOf?(inp: InputRecord): string | undefined
+  envOf?(inp: InputRecord): Record<string, string> | undefined
 }
 
 // To add a new file tool: add one entry below.
 interface FileConfig {
-  actionOf(inp: Inp): 'Write' | 'Edit' | 'Create'
+  actionOf(inp: InputRecord): 'Write' | 'Edit' | 'Create'
 }
 
-function inputRecord(input: unknown): Inp {
-  return input && typeof input === 'object' && !Array.isArray(input) ? (input as Inp) : {}
+function inputRecord(input: unknown): InputRecord {
+  return input && typeof input === 'object' && !Array.isArray(input) ? (input as InputRecord) : {}
 }
 
-function stringInput(inp: Inp, key: string): string | undefined {
+function stringInput(inp: InputRecord, key: string): string | undefined {
   const value = inp[key]
   return typeof value === 'string' ? value : undefined
 }
 
-function stringEnv(inp: Inp): Record<string, string> | undefined {
+function stringEnv(inp: InputRecord): Record<string, string> | undefined {
   const raw = inp.env
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
   const env: Record<string, string> = {}

@@ -139,7 +139,7 @@ export default function extension(pi: ExtensionAPI) {
     }
   }
 
-  function fmtK(n: number): string {
+  function formatK(n: number): string {
     return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`
   }
 
@@ -183,8 +183,6 @@ export default function extension(pi: ExtensionAPI) {
     requestRender()
   })
 
-  // --- UI setup ---
-
   pi.on('session_start', async (_event, ctx) => {
     renderCallbacks = []
     currentThinkingLevel = currentPiThinkingLevel()
@@ -207,54 +205,50 @@ export default function extension(pi: ExtensionAPI) {
         render(width: number): string[] {
           const sep = theme.fg('dim', ' │ ')
 
-          // Directory
           const dir = ctx.cwd.split('/').pop() ?? ctx.cwd
-          const segDir = theme.fg('accent', dir)
+          const dirSegment = theme.fg('accent', dir)
 
-          // Model
           const modelStr = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : '—'
-          const segModel = theme.fg('dim', modelStr)
+          const modelSegment = theme.fg('dim', modelStr)
 
-          // Thinking level
           const tLevel = currentThinkingLevel
-          const segThink = theme.fg('dim', 'think:') + theme.fg(thinkColor(tLevel), tLevel)
+          const thinkSegment = theme.fg('dim', 'think:') + theme.fg(thinkColor(tLevel), tLevel)
 
-          // Context usage
           const usage = ctx.getContextUsage()
-          let segCtx: string
+          let ctxSegment: string
           if (usage?.tokens != null && usage.contextWindow > 0) {
             const pct = Math.round(usage.percent ?? (usage.tokens * 100) / usage.contextWindow)
             const color = pctColor(pct)
-            segCtx =
+            ctxSegment =
               theme.fg('dim', 'ctx') +
               ' [' +
               theme.fg(color, miniBar(pct)) +
               '] ' +
               theme.fg(color, `${pct}%`) +
               ' ' +
-              theme.fg('dim', `(${fmtK(usage.tokens)}/${fmtK(usage.contextWindow)})`)
+              theme.fg('dim', `(${formatK(usage.tokens)}/${formatK(usage.contextWindow)})`)
           } else {
-            segCtx = theme.fg('dim', 'ctx —')
+            ctxSegment = theme.fg('dim', 'ctx —')
           }
 
           const costStr = totalCost > 0 ? totalCost.toFixed(3) : '0.000'
           const costColor = totalCost > 0 ? 'success' : 'dim'
-          const segCost = theme.fg('dim', '$') + theme.fg(costColor, costStr)
+          const costSegment = theme.fg('dim', '$') + theme.fg(costColor, costStr)
 
-          // Git branch + status
+          let gitSegment = ''
+          let diffSegment = ''
           const branch = footerData.getGitBranch()
-          let segGit = ''
-          let segDiff = ''
           if (branch) {
-            segGit = theme.fg('accent', branch)
+            gitSegment = theme.fg('accent', branch)
             if (gitState) {
-              if (gitState.dirty > 0) segGit += ` ${theme.fg('warning', `~${gitState.dirty}`)}`
+              if (gitState.dirty > 0) gitSegment += ` ${theme.fg('warning', `~${gitState.dirty}`)}`
               if (gitState.untracked > 0)
-                segGit += ` ${theme.fg('muted', `?${gitState.untracked}`)}`
-              if (gitState.ahead > 0) segGit += ` ${theme.fg('success', `↑${gitState.ahead}`)}`
-              if (gitState.behind > 0) segGit += ` ${theme.fg('warning', `↓${gitState.behind}`)}`
+                gitSegment += ` ${theme.fg('muted', `?${gitState.untracked}`)}`
+              if (gitState.ahead > 0) gitSegment += ` ${theme.fg('success', `↑${gitState.ahead}`)}`
+              if (gitState.behind > 0)
+                gitSegment += ` ${theme.fg('warning', `↓${gitState.behind}`)}`
               if (gitState.linesAdded > 0 || gitState.linesRemoved > 0) {
-                segDiff =
+                diffSegment =
                   theme.fg('toolDiffAdded', `+${gitState.linesAdded}`) +
                   theme.fg('dim', '/') +
                   theme.fg('toolDiffRemoved', `-${gitState.linesRemoved}`)
@@ -264,14 +258,13 @@ export default function extension(pi: ExtensionAPI) {
 
           // Extension statuses from other extensions
           const statuses = [...footerData.getExtensionStatuses().values()].filter(Boolean)
-          const segStatuses = statuses.join(' · ')
+          const statusesSegment = statuses.join(' · ')
 
-          // Assemble status line
-          let left = ` ${segDir}${sep}${segModel}${sep}${segThink}${sep}${segCtx}${sep}${segCost}`
-          if (segGit) left += `${sep}${segGit}`
-          if (segDiff) left += `${sep}${segDiff}`
+          let left = ` ${dirSegment}${sep}${modelSegment}${sep}${thinkSegment}${sep}${ctxSegment}${sep}${costSegment}`
+          if (gitSegment) left += `${sep}${gitSegment}`
+          if (diffSegment) left += `${sep}${diffSegment}`
 
-          const right = segStatuses ? ` ${segStatuses} ` : ''
+          const right = statusesSegment ? ` ${statusesSegment} ` : ''
           const pad = Math.max(1, width - visibleWidth(left) - visibleWidth(right))
           const statusLine = truncateToWidth(left + ' '.repeat(pad) + right, width)
 

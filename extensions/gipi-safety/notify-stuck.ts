@@ -14,13 +14,8 @@
 import { execSync } from 'node:child_process'
 import process from 'node:process'
 
-// ── State ────────────────────────────────────────────────────────────
-
 /** Whether a notification has been sent for the current stuck event */
 let stuckNotified = false
-
-// ── Terminal detection ───────────────────────────────────────────────
-
 /**
  * Terminal program names that support the kitty OSC 99 notification protocol.
  * Ghostty is the primary target; kitty is compatible.
@@ -43,9 +38,6 @@ function terminalAppName(): string | null {
   if (term === 'kitty') return 'kitty'
   return null
 }
-
-// ── Focus detection ──────────────────────────────────────────────────
-
 /**
  * Check if the terminal window is the frontmost (focused) application.
  * Uses osascript on macOS. Falls back to "focused" (true) on failure
@@ -65,9 +57,6 @@ export function isTerminalFocused(): boolean {
     return true // error (e.g. process not running), assume focused
   }
 }
-
-// ── OSC 99 notification ──────────────────────────────────────────────
-
 /**
  * Send a desktop notification via the kitty OSC 99 protocol.
  *
@@ -109,9 +98,6 @@ export function sendOSC99Notification(title: string, body: string): void {
     // Best-effort: silently ignore write errors
   }
 }
-
-// ── Public API ───────────────────────────────────────────────────────
-
 /**
  * Attempt to send a stuck-agent notification.
  *
