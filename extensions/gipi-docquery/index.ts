@@ -43,21 +43,18 @@ function versionTag(versions: string[]): string {
 }
 
 function formatLibrary(lib: Ctx7Library): string {
-  const lines: string[] = []
-  lines.push(`  ${lib.title}`)
-  lines.push(`  ID    : ${lib.id}`)
-  lines.push(`  Desc  : ${lib.description}`)
-  if (lib.stars && lib.stars >= 0) lines.push(`  Stars : ${lib.stars.toLocaleString()}`)
-  lines.push(`  Score : trust=${lib.trustScore}  benchmark=${lib.benchmarkScore}`)
-  lines.push(
-    `  Docs  : ${lib.totalSnippets} snippets, ${((lib.totalTokens ?? 0) / 1000).toFixed(0)}K tokens`,
-  )
+  const stars = lib.stars && lib.stars >= 0 ? ` ★${lib.stars.toLocaleString()}` : ''
+  const snippets = `${lib.totalSnippets} snippets, ${((lib.totalTokens ?? 0) / 1000).toFixed(0)}K tokens`
   const versions = versionTag(lib.versions ?? [])
-  if (versions) lines.push(`  Vers  : ${versions}`)
-  if (lib.lastUpdateDate) {
-    lines.push(`  Updated: ${new Date(lib.lastUpdateDate).toLocaleDateString()}`)
-  }
-  return lines.join('\n')
+  const ver = versions ? ` v${versions}` : ''
+  const updated = lib.lastUpdateDate
+    ? ` (${new Date(lib.lastUpdateDate).toLocaleDateString()})`
+    : ''
+  return [
+    `  ${lib.title} — ${lib.id}`,
+    `  ${lib.description}`,
+    `  ${stars}  ${snippets}${ver}${updated}`,
+  ].join('\n')
 }
 
 function formatLibraries(libs: Ctx7Library[]): string {
@@ -136,7 +133,7 @@ export default function extension(pi: ExtensionAPI) {
       const { data } = await jsonGet(url.toString(), { headers: authHeaders() }, signal)
 
       const parsed = safeParse(Ctx7LibrarySearchResponse, data, { results: [] })
-      const header = `🔍 **Context7 Library Search**  \nLibrary: \`${params.name}\`${params.query ? `  \nContext: \`${params.query}\`` : ''}`
+      const header = `🔍 ctx7_library — \`${params.name}\`${params.query ? ` (${params.query})` : ''}`
       const text = truncateForTool(header + '\n\n' + formatLibraries(parsed.results))
 
       return {
@@ -176,7 +173,7 @@ export default function extension(pi: ExtensionAPI) {
       const { data } = await jsonGet(url.toString(), { headers: authHeaders() }, signal)
 
       const parsed = safeParse(Ctx7DocsResponse, data, {})
-      const header = `📚 **Context7 Documentation Query**  \nLibrary: \`${params.library_id}\`  \nQuery: \`${params.query}\``
+      const header = `📚 ctx7_docs — \`${params.library_id}\` — ${params.query}`
       const text = truncateForTool(header + '\n\n' + formatDocs(parsed))
 
       return {

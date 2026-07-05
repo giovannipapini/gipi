@@ -27,7 +27,7 @@ import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-a
 import { Type } from 'typebox'
 
 import { optionalKey, requireEnvKey } from '../../lib/env.js'
-import { clipText, fmtResults, mdBlock, truncateForTool } from '../../lib/format.js'
+import { clipText, fmtResults, truncateForTool } from '../../lib/format.js'
 import { jsonPost, pollGet } from '../../lib/http.js'
 import {
   ExaAnswerResponse,
@@ -165,16 +165,14 @@ function registerWebSearch(pi: ExtensionAPI) {
     }),
     async execute(_id, params, signal) {
       const numResults = params.numResults ?? 5
-
-      // Build parameter summary
-      const parts: string[] = [`🔍 **Web Search**  \nQuery: \`${params.query}\``]
-      parts.push(`Results: ${numResults}`)
-      if (params.category) parts.push(`Category: ${params.category}`)
-      if (params.fresh) parts.push('Fresh: yes')
-      if (params.startPublishedDate) parts.push(`From: ${params.startPublishedDate}`)
-      if (params.endPublishedDate) parts.push(`To: ${params.endPublishedDate}`)
-      if (params.summary) parts.push('Summary: yes')
-      const paramHeader = parts.join('  \n')
+      const tags: string[] = []
+      if (params.category) tags.push(params.category)
+      if (params.fresh) tags.push('fresh')
+      if (params.summary) tags.push('summaries')
+      if (params.startPublishedDate) tags.push(`from ${params.startPublishedDate}`)
+      if (params.endPublishedDate) tags.push(`to ${params.endPublishedDate}`)
+      const tagStr = tags.length ? ` [${tags.join(', ')}]` : ''
+      const paramHeader = `🔍 web_search — \`${params.query}\` (${numResults} results)${tagStr}`
 
       if (optionalKey('EXA_API_KEY')) {
         const body: Record<string, unknown> = { query: params.query, numResults }
@@ -242,7 +240,7 @@ function registerWebAnswer(pi: ExtensionAPI) {
         (c, i) => `  [${i + 1}] ${c.title ?? '(no title)'}${c.url ? `\n      ${c.url}` : ''}`,
       )
 
-      const header = `❓ **Web Answer**  \nQuery: \`${params.query}\``
+      const header = `❓ web_answer — \`${params.query}\``
       const out = [header, '', answer.trim()]
       if (citations.length) out.push('', 'Sources:', citations.join('\n'))
       return textResult(out.join('\n'))
@@ -264,7 +262,8 @@ function registerWebSimilar(pi: ExtensionAPI) {
       ),
     }),
     async execute(_id, params, signal) {
-      const header = `🔗 **Web Similar**  \nReference URL: \`${params.url}\`  \nResults: ${params.numResults ?? 5}`
+      const n = params.numResults ?? 5
+      const header = `🔗 web_similar — \`${params.url}\` (${n} results)`
 
       const { data } = await jsonPost(
         `${EXA_BASE}/findSimilar`,
@@ -311,15 +310,13 @@ function registerWebScrape(pi: ExtensionAPI) {
     }),
     async execute(_id, params, signal) {
       const wantsJson = !!params.schema || !!params.extractPrompt
-
-      // Build parameter summary
-      const paramParts: string[] = [`📄 **Web Scrape`]
-      paramParts.push(`URL: \`${params.url}\``)
-      paramParts.push(`Format: ${wantsJson ? 'structured JSON' : 'markdown'}`)
-      if (params.onlyMainContent === false) paramParts.push('Main content only: no')
-      if (params.extractPrompt) paramParts.push(`Extract prompt: \`${params.extractPrompt}\``)
-      if (params.schema) paramParts.push('Schema: provided')
-      const paramHeader = paramParts.join('  \n')
+      const fmt = wantsJson ? 'structured JSON' : 'markdown'
+      const extras: string[] = []
+      if (params.onlyMainContent === false) extras.push('no main content filter')
+      if (params.extractPrompt) extras.push(`prompt: ${params.extractPrompt}`)
+      if (params.schema) extras.push('schema')
+      const suffix = extras.length ? ` — ${extras.join(', ')}` : ''
+      const header = `📄 web_scrape — \`${params.url}\` (${fmt})${suffix}`
 
       if (optionalKey('FIRECRAWL_API_KEY')) {
         const jsonFmt: Record<string, unknown> = { type: 'json' }
@@ -340,18 +337,15 @@ function registerWebScrape(pi: ExtensionAPI) {
         const parsed = safeParse(FcScrapeResponse, data, {})
         if (!parsed.data) throw new Error(`Firecrawl returned no content for ${params.url}.`)
         const d = parsed.data
-        const { title } = fcMeta(d.metadata ?? {}, params.url)
 
         if (wantsJson && data.json !== undefined) {
           return textResult(
-            paramHeader +
-              '\n\n' +
-              `## ${title}\n${params.url}\n\n\`\`\`json\n${clipText(JSON.stringify(data.json, null, 2))}\n\`\`\``,
+            `${header}\n\n\`\`\`json\n${clipText(JSON.stringify(data.json, null, 2))}\n\`\`\``,
           )
         }
         const md = d.markdown ?? d.html
         if (!md) throw new Error(`Firecrawl returned no content for ${params.url}.`)
-        return textResult(paramHeader + '\n\n' + mdBlock(title, params.url, clipText(md)))
+        return textResult(`${header}\n\n${clipText(md)}`)
       }
 
       if (wantsJson) {
@@ -372,7 +366,7 @@ function registerWebScrape(pi: ExtensionAPI) {
       }
       const md = r.markdown ?? r.text
       if (!md) throw new Error(`No content extracted from ${params.url}.`)
-      return textResult(paramHeader + '\n\n' + mdBlock(params.url, params.url, clipText(md)))
+      return textResult(`${header}\n\n${clipText(md)}`)
     },
   })
 }
@@ -394,7 +388,9 @@ function registerWebMap(pi: ExtensionAPI) {
       ),
     }),
     async execute(_id, params, signal) {
-      const header = `🗺️ **Web Map**  \nSite: \`${params.url}\`  \nLimit: ${params.limit ?? 100}${params.search ? `  \nFilter: \`${params.search}\`` : ''}`
+      const n = params.limit ?? 100
+      const tag = params.search ? `, filter: ${params.search}` : ''
+      const header = `🗺️ web_map — \`${params.url}\` (${n} pages${tag})`
 
       const { data } = await jsonPost(
         `${FC_BASE}/v2/map`,
@@ -449,7 +445,9 @@ function registerWebCrawl(pi: ExtensionAPI) {
       ),
     }),
     async execute(_id, params, signal, onUpdate) {
-      const header = `🕸️ **Web Crawl**  \nStart URL: \`${params.url}\`  \nPages: ${params.limit ?? 10}  \nMax depth: ${params.maxDiscoveryDepth ?? 2}`
+      const n = params.limit ?? 10
+      const d = params.maxDiscoveryDepth ?? 2
+      const header = `🕸️ web_crawl — \`${params.url}\` (${n} pages, depth ${d})`
 
       const { data: start } = await jsonPost(
         `${FC_BASE}/v2/crawl`,
@@ -504,7 +502,7 @@ function registerWebCrawl(pi: ExtensionAPI) {
       })
 
       const more = parsed.next ? '\n\n[more pages available — increase limit or paginate]' : ''
-      const joined = `${header}\n\nCrawled ${pages.length} page(s):\n\n${blocks.join('\n\n---\n\n')}${more}`
+      const joined = `${header}\n\n${pages.length} page(s):\n\n${blocks.join('\n\n---\n\n')}${more}`
       return textResult(joined)
     },
   })
