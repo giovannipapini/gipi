@@ -1,54 +1,16 @@
-import { spawn } from 'node:child_process'
 import { closeSync, existsSync, openSync, readSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { getShellConfig } from '@earendil-works/pi-coding-agent'
+import type { Options } from 'execa'
+import { execaCommand } from 'execa'
+import { jobId } from '../../lib/id.js'
+import { isPidAlive, killProcessTree, SIGKILL_GRACE_MS } from '../../lib/process.js'
 import { ensureSessionDir, saveJobs, sessionDir } from './store.js'
 import type { Job, JobStatus } from './types.js'
 
-const ID_ALPHA = 'abcdefghijklmnopqrstuvwxyz'
-const SIGKILL_GRACE_MS = 1000
 const IS_UNIX = process.platform !== 'win32'
 
-export function newJobId(existing: Set<string>): string {
-  for (let attempt = 0; attempt < 1000; attempt++) {
-    const a = ID_ALPHA[Math.floor(Math.random() * 26)]
-    const b = ID_ALPHA[Math.floor(Math.random() * 26)]
-    const n = Math.floor(Math.random() * 100)
-      .toString()
-      .padStart(2, '0')
-    const id = `bg-${a}${b}${n}`
-    if (!existing.has(id)) return id
-  }
-  return `bg-${Date.now().toString(36)}`
-}
-
-// Kill the entire process group. With `detached: true` on Unix, the spawned
-// child becomes a process-group leader, so process.kill(-pid, sig) reaches
-// every descendant (the shell AND the actual server/watcher it spawned).
-// Returns false if the target no longer exists.
-export function killProcessTree(pid: number, signal: NodeJS.Signals): boolean {
-  // PID 0 signals self's process group, PID 1 is init — both are never valid
-  // process-group leaders for background jobs. Guard to prevent accidental
-  // signaling of the pi agent itself or system processes.
-  if (!pid || pid < 2) return false
-  try {
-    if (IS_UNIX) process.kill(-pid, signal)
-    else process.kill(pid, signal)
-    return true
-  } catch (err: unknown) {
-    return (err as NodeJS.ErrnoException).code === 'EPERM'
-  }
-}
-
-export function isPidAlive(pid: number): boolean {
-  if (!pid || pid < 1) return false
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch (err: unknown) {
-    return (err as NodeJS.ErrnoException).code === 'EPERM'
-  }
-}
+export { isPidAlive, killProcessTree, SIGKILL_GRACE_MS }
 
 export interface JobRegistry {
   getAll(): Job[]
@@ -115,19 +77,21 @@ export function createRegistry(sessionId: string, onChange: () => void): JobRegi
 
     startJob({ command, cwd, timeoutSeconds }) {
       ensureSessionDir(sessionId)
-      const id = newJobId(new Set(jobs.keys()))
+      const id = jobId()
       const stdoutPath = join(sessionDir(sessionId), `${id}.stdout`)
       const stderrPath = join(sessionDir(sessionId), `${id}.stderr`)
-      const stdoutFd = openSync(stdoutPath, 'w')
-      const stderrFd = openSync(stderrPath, 'w')
 
-      const { shell, args } = getShellConfig()
-      const child = spawn(shell, [...args, command], {
+      const { shell: shellPath } = getShellConfig()
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const execaOpts = {
         cwd,
+        shell: shellPath,
         detached: IS_UNIX,
-        stdio: ['ignore', stdoutFd, stderrFd],
-        windowsHide: true,
-      })
+        stdin: 'ignore',
+        stdout: { file: stdoutPath },
+        stderr: { file: stderrPath },
+      } satisfies Options
+      const child = execaCommand(command, execaOpts)
 
       const job: Job = {
         id,
@@ -154,8 +118,6 @@ export function createRegistry(sessionId: string, onChange: () => void): JobRegi
         clearTimer(timeoutTimers, job.id)
         notifyChange()
       })
-      closeSync(stdoutFd)
-      closeSync(stderrFd)
       if (IS_UNIX) child.unref()
 
       if (timeoutSeconds && timeoutSeconds > 0) {

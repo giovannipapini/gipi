@@ -14,96 +14,33 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from '@earendil-works/pi-coding-agent'
 import { Type } from 'typebox'
+import type { z } from 'zod'
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-interface LibraryResult {
-  id: string
-  title: string
-  description: string
-  branch: string
-  lastUpdateDate: string
-  totalTokens: number
-  totalSnippets: number
-  stars: number
-  trustScore: number
-  benchmarkScore: number
-  versions: string[]
-  state: string
-}
-
-interface CodeEntry {
-  language: string
-  code: string
-}
-
-interface CodeSnippet {
-  codeTitle: string
-  codeDescription: string
-  codeLanguage: string
-  codeTokens: number
-  codeId: string
-  pageTitle: string
-  codeList: CodeEntry[]
-}
-
-interface InfoSnippet {
-  pageId: string
-  breadcrumb: string
-  content: string
-  contentTokens: number
-}
-
-interface DocsResponse {
-  codeSnippets: CodeSnippet[]
-  infoSnippets: InfoSnippet[]
-}
-
-interface LibrarySearchResponse {
-  results: LibraryResult[]
-}
+import { optionalKey, requireEnvKey } from '../../lib/env.js'
+import { truncateForTool } from '../../lib/format.js'
+import { jsonGet } from '../../lib/http.js'
+import {
+  type Ctx7CodeSnippet,
+  Ctx7DocsResponse,
+  type Ctx7InfoSnippet,
+  type Ctx7Library,
+  Ctx7LibrarySearchResponse,
+  safeParse,
+} from '../../lib/parse.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const API_BASE = 'https://context7.com/api/v2'
 
-function truncateToolOutput(text: string): string {
-  const trunc = truncateHead(text, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES })
-  return trunc.truncated ? `${trunc.content}\n[output truncated]` : trunc.content
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-const CTX7_KEY_RE = /^ctx7sk-/
-
-function getApiKey(): string | undefined {
-  return process.env.CONTEXT7_API_KEY
-}
-
-function validateCtx7Key(key: string): void {
-  if (!CTX7_KEY_RE.test(key)) {
-    throw new Error(
-      "CONTEXT7_API_KEY format looks wrong — expected a key starting with 'ctx7sk-'. " +
-        'Check your key at https://context7.com/dashboard',
-    )
-  }
-}
+// ── Auth headers ───────────────────────────────────────────────────────────
 
 function authHeaders(): Record<string, string> {
-  const key = getApiKey()
-  if (!key) {
-    throw new Error(
-      'CONTEXT7_API_KEY is not set. Get one at https://context7.com/dashboard ' +
-        'and set it in your environment (e.g., export CONTEXT7_API_KEY=ctx7sk_...).',
-    )
-  }
-  validateCtx7Key(key)
-  return {
-    Authorization: `Bearer ${key}`,
-  }
+  const key = requireEnvKey('CONTEXT7_API_KEY', 'https://context7.com/dashboard')
+  return { Authorization: `Bearer ${key}` }
 }
+
+// ── Formatting ─────────────────────────────────────────────────────────────
 
 function versionTag(versions: string[]): string {
   if (!versions || versions.length === 0) return ''
@@ -111,17 +48,17 @@ function versionTag(versions: string[]): string {
   return sorted.slice(0, 3).join(', ')
 }
 
-function fmtLibrary(lib: LibraryResult): string {
+function fmtLibrary(lib: Ctx7Library): string {
   const lines: string[] = []
   lines.push(`  ${lib.title}`)
   lines.push(`  ID    : ${lib.id}`)
   lines.push(`  Desc  : ${lib.description}`)
-  if (lib.stars >= 0) lines.push(`  Stars : ${lib.stars.toLocaleString()}`)
+  if (lib.stars && lib.stars >= 0) lines.push(`  Stars : ${lib.stars.toLocaleString()}`)
   lines.push(`  Score : trust=${lib.trustScore}  benchmark=${lib.benchmarkScore}`)
   lines.push(
-    `  Docs  : ${lib.totalSnippets} snippets, ${(lib.totalTokens / 1000).toFixed(0)}K tokens`,
+    `  Docs  : ${lib.totalSnippets} snippets, ${((lib.totalTokens ?? 0) / 1000).toFixed(0)}K tokens`,
   )
-  const versions = versionTag(lib.versions)
+  const versions = versionTag(lib.versions ?? [])
   if (versions) lines.push(`  Vers  : ${versions}`)
   if (lib.lastUpdateDate) {
     lines.push(`  Updated: ${new Date(lib.lastUpdateDate).toLocaleDateString()}`)
@@ -129,12 +66,12 @@ function fmtLibrary(lib: LibraryResult): string {
   return lines.join('\n')
 }
 
-function fmtLibraries(libs: LibraryResult[]): string {
+function fmtLibraries(libs: Ctx7Library[]): string {
   if (libs.length === 0) return 'No libraries found.'
   return libs.map((lib, i) => `${i + 1}.${fmtLibrary(lib)}`).join('\n\n')
 }
 
-function fmtCodeSnippet(s: CodeSnippet): string {
+function fmtCodeSnippet(s: z.infer<typeof Ctx7CodeSnippet>): string {
   const lines: string[] = []
   lines.push(`### ${s.codeTitle}`)
   if (s.codeDescription) lines.push(`\n${s.codeDescription}`)
@@ -147,14 +84,14 @@ function fmtCodeSnippet(s: CodeSnippet): string {
   return lines.join('\n')
 }
 
-function fmtInfoSnippet(s: InfoSnippet): string {
+function fmtInfoSnippet(s: z.infer<typeof Ctx7InfoSnippet>): string {
   const lines: string[] = []
   if (s.breadcrumb) lines.push(`### ${s.breadcrumb}`)
   lines.push(s.content)
   return lines.join('\n\n')
 }
 
-function fmtDocs(docs: DocsResponse): string {
+function fmtDocs(docs: z.infer<typeof Ctx7DocsResponse>): string {
   const parts: string[] = []
 
   // Info snippets first (documentation)
@@ -174,54 +111,6 @@ function fmtDocs(docs: DocsResponse): string {
   if (parts.length === 0) return 'No documentation found for this query.'
 
   return parts.join('\n')
-}
-
-function isAuthError(status: number): boolean {
-  return status === 401 || status === 403
-}
-
-async function apiGet<T>(
-  path: string,
-  params: Record<string, string>,
-  signal?: AbortSignal,
-): Promise<{ data: T; status: number }> {
-  const url = new URL(`${API_BASE}${path}`)
-  for (const [k, v] of Object.entries(params)) {
-    url.searchParams.set(k, v)
-  }
-
-  const headers = authHeaders()
-
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: { ...headers, Accept: 'application/json' },
-    signal,
-  })
-
-  const status = res.status
-
-  if (!res.ok) {
-    let detail = ''
-    try {
-      const err = (await res.json()) as { error?: string; message?: string }
-      detail = err.message ?? err.error ?? res.statusText
-    } catch {
-      detail = res.statusText
-    }
-
-    if (status === 429) {
-      throw new Error(`Context7 rate limit exceeded. Retry later.`)
-    }
-    if (isAuthError(status)) {
-      throw new Error(
-        `Context7 auth failed (${status}). Check your CONTEXT7_API_KEY at https://context7.com/dashboard`,
-      )
-    }
-    throw new Error(`Context7 API error (${status}): ${detail}`)
-  }
-
-  const data = (await res.json()) as T
-  return { data, status }
 }
 
 // ── Extension ──────────────────────────────────────────────────────────────
@@ -252,25 +141,18 @@ export default function extension(pi: ExtensionAPI) {
 
     async execute(_toolCallId, params, signal) {
       const q = params.query ?? params.name
-      const body: Record<string, string> = {
-        libraryName: params.name,
-        query: q,
-      }
+      const url = new URL(`${API_BASE}/libs/search`)
+      url.searchParams.set('libraryName', params.name)
+      url.searchParams.set('query', q)
 
-      const { data } = await apiGet<LibrarySearchResponse>('/libs/search', body, signal)
+      const { data } = await jsonGet(url.toString(), { headers: authHeaders() }, signal)
 
-      const results = data.results ?? (data as unknown as LibraryResult[])
-
-      let text: string
-      if (Array.isArray(results)) {
-        text = truncateToolOutput(fmtLibraries(results))
-      } else {
-        text = 'Unexpected response format from Context7 API.'
-      }
+      const parsed = safeParse(Ctx7LibrarySearchResponse, data, { results: [] })
+      const text = truncateForTool(fmtLibraries(parsed.results))
 
       return {
         content: [{ type: 'text', text }],
-        details: { query: params.name, resultsCount: Array.isArray(results) ? results.length : 0 },
+        details: { query: params.name, resultsCount: parsed.results.length },
       }
     },
   })
@@ -299,25 +181,23 @@ export default function extension(pi: ExtensionAPI) {
     }),
 
     async execute(_toolCallId, params, signal) {
-      const { data } = await apiGet<DocsResponse>(
-        '/context',
-        {
-          libraryId: params.library_id,
-          query: params.query,
-          type: 'json',
-        },
-        signal,
-      )
+      const url = new URL(`${API_BASE}/context`)
+      url.searchParams.set('libraryId', params.library_id)
+      url.searchParams.set('query', params.query)
+      url.searchParams.set('type', 'json')
 
-      const text = truncateToolOutput(fmtDocs(data))
+      const { data } = await jsonGet(url.toString(), { headers: authHeaders() }, signal)
+
+      const parsed = safeParse(Ctx7DocsResponse, data, {})
+      const text = truncateForTool(fmtDocs(parsed))
 
       return {
         content: [{ type: 'text', text }],
         details: {
           libraryId: params.library_id,
           query: params.query,
-          codeSnippets: data.codeSnippets?.length ?? 0,
-          infoSnippets: data.infoSnippets?.length ?? 0,
+          codeSnippets: parsed.codeSnippets?.length ?? 0,
+          infoSnippets: parsed.infoSnippets?.length ?? 0,
         },
       }
     },
@@ -344,14 +224,8 @@ export default function extension(pi: ExtensionAPI) {
   // ── Status indicator ──────────────────────────────────────────────────
 
   pi.on('session_start', async (_event, ctx: ExtensionContext) => {
-    const key = getApiKey()
+    const key = optionalKey('CONTEXT7_API_KEY')
     if (key) {
-      if (!CTX7_KEY_RE.test(key)) {
-        ctx.ui.notify(
-          "CONTEXT7_API_KEY format looks wrong — expected a key starting with 'ctx7sk-'",
-          'warning',
-        )
-      }
       ctx.ui.setStatus('gipi-docquery', 'ctx7 ✓')
     } else {
       ctx.ui.notify(
