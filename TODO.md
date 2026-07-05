@@ -1,5 +1,5 @@
 # TODO
 
 - [ ] in gipi-safety, add blocking the LLM from writing to .env, .git/, or node_modules/
-- [ ] improve integration with ghostty with notification when gipi-safety is stuck waiting
+- [x] improve integration with ghostty with notification when gipi-safety is stuck waiting
 - [ ] implement gipi-karpaty for injecting karpaty principles

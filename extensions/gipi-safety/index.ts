@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 import { isToolCallEventType } from '@earendil-works/pi-coding-agent'
 import { Key } from '@earendil-works/pi-tui'
+import { notifyStuck, resetStuckNotified } from './notify-stuck.js'
 import type { Plugin, PluginResult } from './plugin.js'
 import { safeRulesPlugin } from './plugin-safe-rules.js'
 import { substitutionPlugin } from './plugin-substitutions.js'
@@ -141,7 +142,9 @@ export default function (pi: ExtensionAPI) {
       updateStatus(ctx)
       return
     }
+    notifyStuck()
     const decision = await prompt()
+    resetStuckNotified()
     if (decision === 'no') {
       stats.blocked++
       updateStatus(ctx)
