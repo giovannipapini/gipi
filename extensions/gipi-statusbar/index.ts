@@ -1,15 +1,22 @@
 /**
- * gipi-statusbar extension — replaces the built-in pi footer with a richer status line.
+ * gipi-statusbar extension — replaces the built-in pi footer with a richer status line
+ * and sets the terminal tab/window title via Kitty/Ghostty/iTerm2 OSC protocol.
  *
- * Layout:
- *   dir │ model │ think:high │ ctx [▓▓▓░░░░░] 42% (85k/200k) │ $0.003 │ branch ~2 ?1 ↑1 │ +10/-5
+ * Tab title format (idle):
+ *   pi § <fullpath> │ <model> │ <branch> │ think:<level>
+ *
+ * Tab title format (running):
+ *   pi § <fullpath> │ <model> │ <branch> │ think:<level> ●
+ *
+ * Status bar layout:
+ *   ~/project │ model │ think:high │ ctx [▓▓▓░░░░░] 42% (85k/200k) │ $— │ branch ~2 ?1 ↑1 │ +10/-5
  *                                               [extension statuses on the right]
+ *
+ * Hints row below the status bar shows key bindings at a glance.
+ * Git state is refreshed at session start and after each agent turn.
  *
  * Shortcuts registered here:
  *   Ctrl+Shift+H — invoke /hotkeys
- *
- * A hints row is rendered below the status bar showing key bindings at a glance.
- * Git state is refreshed at session start and after each agent turn.
  */
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
@@ -40,6 +47,19 @@ export default function extension(pi: ExtensionAPI) {
   let gitRefreshTimer: ReturnType<typeof setTimeout> | undefined
   let gitRefreshInFlight = false
   let queuedGitCwd: string | undefined
+
+  // Agent running state
+  let agentRunning = false
+  // Current tab title components
+  let tabDir = ''
+  let tabModel = ''
+  let tabBranch = ''
+
+  /** Full path with ~/ for home directory. */
+  function displayPath(p: string): string {
+    const home = process.env.HOME
+    return home && p.startsWith(home) ? p.replace(home, '~') : p
+  }
 
   // Hints row entries — populated by addShortcut(); external entries inserted inline.
   const shortcutHints: Array<{ display: string; label: string }> = []
@@ -81,6 +101,34 @@ export default function extension(pi: ExtensionAPI) {
     }
     totalCost = Math.max(0, nextCost)
   }
+
+  // ─── Tab / Window Title ────────────────────────────────────────────────────
+
+  /** Build and write the tab/window title from current state. */
+  function updateTabTitle() {
+    const parts: string[] = []
+    if (tabDir) parts.push(tabDir)
+    if (tabModel) parts.push(tabModel)
+    if (tabBranch) parts.push(tabBranch)
+
+    // Always show thinking level
+    parts.push(`think:${currentThinkingLevel}`)
+
+    const title = agentRunning ? `pi § ${parts.join(' │ ')} ●` : `pi § ${parts.join(' │ ')}`
+
+    // We update via a deferred global render callback since setTitle needs ctx,
+    // but it's safe to call via the stored callbacks
+    for (const cb of renderCallbacks) cb()
+    // The setTitle is called from within the footer render via a separate mechanism.
+    // We write it directly to the terminal using the standard OSC escape sequence:
+    //   ESC ] 0 ; title BEL   — sets both window title and icon/tab title.
+    // This is the universal protocol understood by Kitty, Ghostty, iTerm2,
+    // WezTerm, xterm, Terminal.app, Alacritty, and most modern terminals.
+    const osc = `\x1b]0;${title}\x07`
+    process.stdout.write(osc)
+  }
+
+  // ─── Git ────────────────────────────────────────────────────────────────────
 
   function requestGitRefresh(cwd: string) {
     queuedGitCwd = cwd
@@ -139,6 +187,8 @@ export default function extension(pi: ExtensionAPI) {
     }
   }
 
+  // ─── Formatting Helpers ─────────────────────────────────────────────────────
+
   function formatK(n: number): string {
     return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`
   }
@@ -161,7 +211,7 @@ export default function extension(pi: ExtensionAPI) {
     return 'error' // high, xhigh
   }
 
-  // --- Shortcuts ---
+  // ─── Shortcuts ──────────────────────────────────────────────────────────────
 
   // External shortcuts from other extensions (gipi-safety)
   shortcutHints.push({ display: 'ctrl+shift+e', label: 'confirm' })
@@ -177,9 +227,15 @@ export default function extension(pi: ExtensionAPI) {
     },
   )
 
+  // ─── Events ─────────────────────────────────────────────────────────────────
+
   // Sync thinking level when changed externally (e.g. via /thinking command)
   pi.on('thinking_level_select', async () => {
     currentThinkingLevel = currentPiThinkingLevel()
+    requestRender()
+  })
+
+  pi.on('model_select', async () => {
     requestRender()
   })
 
@@ -187,14 +243,25 @@ export default function extension(pi: ExtensionAPI) {
     renderCallbacks = []
     currentThinkingLevel = currentPiThinkingLevel()
     refreshSessionCost(ctx)
+    agentRunning = false
 
     requestGitRefresh(ctx.cwd)
+
+    // Set initial tab title
+    tabDir = displayPath(ctx.cwd)
+    tabModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : ''
+    tabBranch = ''
+    updateTabTitle()
 
     // Footer bar
     ctx.ui.setFooter((tui, theme, footerData) => {
       const footerRender = () => tui.requestRender()
       renderCallbacks.push(footerRender)
-      const unsubBranch = footerData.onBranchChange(() => tui.requestRender())
+      const unsubBranch = footerData.onBranchChange(() => {
+        tabBranch = footerData.getGitBranch() ?? ''
+        updateTabTitle()
+        tui.requestRender()
+      })
 
       return {
         dispose: () => {
@@ -205,7 +272,7 @@ export default function extension(pi: ExtensionAPI) {
         render(width: number): string[] {
           const sep = theme.fg('dim', ' │ ')
 
-          const dir = ctx.cwd.split('/').pop() ?? ctx.cwd
+          const dir = displayPath(ctx.cwd)
           const dirSegment = theme.fg('accent', dir)
 
           const modelStr = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : '—'
@@ -231,9 +298,17 @@ export default function extension(pi: ExtensionAPI) {
             ctxSegment = theme.fg('dim', 'ctx —')
           }
 
-          const costStr = totalCost > 0 ? totalCost.toFixed(3) : '0.000'
-          const costColor = totalCost > 0 ? 'success' : 'dim'
-          const costSegment = theme.fg('dim', '$') + theme.fg(costColor, costStr)
+          // Only show cost when it's non-zero (shows clean "—" when no cost)
+          let costSegment: string
+          if (totalCost > 0) {
+            const costStr = totalCost.toFixed(3)
+            costSegment = theme.fg('dim', '$') + theme.fg('success', costStr)
+          } else {
+            costSegment = theme.fg('dim', '$—')
+          }
+
+          // Agent running indicator
+          const runningIndicator = agentRunning ? ` ${theme.fg('accent', '●')}` : ''
 
           let gitSegment = ''
           let diffSegment = ''
@@ -260,7 +335,7 @@ export default function extension(pi: ExtensionAPI) {
           const statuses = [...footerData.getExtensionStatuses().values()].filter(Boolean)
           const statusesSegment = statuses.join(' · ')
 
-          let left = ` ${dirSegment}${sep}${modelSegment}${sep}${thinkSegment}${sep}${ctxSegment}${sep}${costSegment}`
+          let left = ` ${dirSegment}${runningIndicator}${sep}${modelSegment}${sep}${thinkSegment}${sep}${ctxSegment}${sep}${costSegment}`
           if (gitSegment) left += `${sep}${gitSegment}`
           if (diffSegment) left += `${sep}${diffSegment}`
 
@@ -278,6 +353,23 @@ export default function extension(pi: ExtensionAPI) {
     })
   })
 
+  pi.on('agent_start', async (_event, ctx) => {
+    agentRunning = true
+    tabModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : ''
+    tabBranch = ''
+    updateTabTitle()
+    requestRender()
+  })
+
+  pi.on('agent_end', async (_event, ctx) => {
+    agentRunning = false
+    refreshSessionCost(ctx)
+    requestGitRefresh(ctx.cwd)
+    tabModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : ''
+    updateTabTitle()
+    requestRender()
+  })
+
   pi.on('message_end', async (event, ctx) => {
     if (event.message.role === 'assistant' && event.message.usage?.cost?.total != null) {
       refreshSessionCost(ctx)
@@ -285,16 +377,13 @@ export default function extension(pi: ExtensionAPI) {
     }
   })
 
-  pi.on('agent_end', async (_event, ctx) => {
-    refreshSessionCost(ctx)
-    requestGitRefresh(ctx.cwd)
-    requestRender()
-  })
-
   pi.on('session_shutdown', async () => {
     if (gitRefreshTimer) clearTimeout(gitRefreshTimer)
     gitRefreshTimer = undefined
     queuedGitCwd = undefined
     renderCallbacks = []
+
+    // Reset tab title on shutdown
+    process.stdout.write('\x1b]0;\x07')
   })
 }
