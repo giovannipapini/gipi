@@ -7,7 +7,9 @@ Thanks for your interest in contributing to gipi!
 1. Fork the repository.
 2. Clone your fork.
 3. Install [Biome](https://biomejs.dev/): `brew install biome`
-4. Install [pre-commit](https://pre-commit.com/): `brew install pre-commit && pre-commit install`
+4. Install [pnpm](https://pnpm.io/): `brew install pnpm`
+5. Install dependencies: `pnpm install` (provides TypeScript types for IDE support)
+6. Install [pre-commit](https://pre-commit.com/): `brew install pre-commit && pre-commit install`
 
 ## Development
 
@@ -15,12 +17,47 @@ All extensions live in `extensions/` as directories with an `index.ts` entry poi
 Themes live in `themes/` as JSON files.
 
 ```bash
+# Install dependencies (TypeScript types for IDE)
+pnpm install
+
 # Check all files
 biome check .
 
 # Auto-fix formatting + lint
 biome check --write .
 ```
+
+## Package Structure
+
+This is a [pi package](https://pi.dev/docs/packages) with a `package.json` manifest:
+
+```json
+{
+  "pi": {
+    "extensions": ["./extensions"],
+    "themes": ["./themes"]
+  }
+}
+```
+
+Pi discovers extensions and themes from the manifest. No manual symlinking needed —
+`pi install git:github.com/giovannipapini/gipi` loads everything.
+
+### For users of this package
+
+```bash
+pi install git:github.com/giovannipapini/gipi
+```
+
+### For local development
+
+Register as a local package from inside the repo:
+
+```bash
+pi install .
+```
+
+Then run `/reload` in pi to pick up changes.
 
 ## Pre-commit Hooks
 
