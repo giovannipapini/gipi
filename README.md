@@ -1,24 +1,54 @@
-# pi-agent
+# gipi
 
-Custom [pi](https://pi.dev/) extensions and themes.
+Custom [pi](https://pi.dev/) extensions and themes for my daily driver setup.
 
-- **Extensions docs**: https://pi.dev/docs/extensions
-- **ExtensionAPI reference**: https://pi.dev/docs/api/extension-api
-- **Theme schema**: https://pi.dev/docs/themes
+## Extensions
+
+| Extension | Description |
+|-----------|-------------|
+| **gipi-background** | Long-running background job manager (tmux-style process pools) |
+| **gipi-dedup** | Deduplicates read/edit tool output to reduce noise |
+| **gipi-docquery** | Query library docs via Context7 API |
+| **gipi-safety** | Interactive tool confirmation guard with plugin rules |
+| **gipi-spinner** | Animated spinner with witty verbs during tool execution |
+| **gipi-statusbar** | Custom footer with git status, context usage, cost, model info |
+| **gipi-webx** | Web search/crawl tools backed by Exa and Firecrawl |
+
+## Theme
+
+| Theme | Description |
+|-------|-------------|
+| **neon-tokyo** | Dark neon-inspired theme with Tokyo Night vibes |
+
+## Usage
+
+Clone the repo and symlink extensions into your pi config:
+
+```bash
+git clone https://github.com/giovannipapini/gipi ~/.pi/agent/git/gipi
+```
+
+Or symlink individual extensions:
+
+```bash
+ln -s "$PWD/extensions/gipi-safety" ~/.pi/agent/extensions/
+ln -s "$PWD/extensions/gipi-statusbar" ~/.pi/agent/extensions/
+```
+
+Then run `/reload` in pi or restart.
 
 ## Development
 
-Linting and formatting are managed by [Biome](https://biomejs.dev/).
-
 ```bash
 # Check all files
-cd pi-agent && biome check .
+biome check .
 
-# Auto-fix everything (formatting + lint)
-cd pi-agent && biome check --write .
-
-# Auto-fix including unsafe fixes (template literals, etc.)
-cd pi-agent && biome check --write --unsafe .
+# Auto-fix formatting + lint
+biome check --write .
 ```
 
-Install Biome: `brew install biome`
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev guide.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

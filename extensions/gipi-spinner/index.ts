@@ -192,19 +192,12 @@ export default function extension(pi: ExtensionAPI) {
     return verb
   }
 
-  function statusLabel(verb: string): string {
-    const f = frames[0] ?? '*'
-    return `${f} ${verb}…`
-  }
-
   function updateVerb(ctx: ExtensionContext, verb: string) {
     ctx.ui.setWorkingMessage(`${verb}…`)
-    ctx.ui.setStatus('gipi-spinner', statusLabel(verb))
   }
 
   function clearVerb(ctx: ExtensionContext) {
     ctx.ui.setWorkingMessage('')
-    ctx.ui.setStatus('gipi-spinner', undefined)
   }
 
   function verbForTool(toolName: string): string {
@@ -230,7 +223,6 @@ export default function extension(pi: ExtensionAPI) {
 
     ctx.ui.setWorkingIndicator({ frames, intervalMs })
     ctx.ui.setWorkingMessage('')
-    ctx.ui.setStatus('gipi-spinner', undefined)
   })
 
   pi.on('session_shutdown', async (_event, ctx) => {

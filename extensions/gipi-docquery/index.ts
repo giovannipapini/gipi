@@ -352,7 +352,7 @@ export default function extension(pi: ExtensionAPI) {
           'warning',
         )
       }
-      ctx.ui.setStatus('gipi-docquery', 'ctx7 ✓ ·')
+      ctx.ui.setStatus('gipi-docquery', 'ctx7 ✓')
     } else {
       ctx.ui.notify(
         'ctx7 docs loaded — set CONTEXT7_API_KEY to enable library documentation queries',

@@ -36,10 +36,6 @@ function isPipelineSafe(command: string): boolean {
   )
 }
 
-const GREEN = '\x1b[32m'
-const YELLOW = '\x1b[33m'
-const RESET = '\x1b[0m'
-
 type Inp = Record<string, unknown>
 
 interface Stats {
@@ -124,18 +120,12 @@ export default function (pi: ExtensionAPI) {
   const FILE_PIPELINE_TOOLS = new Set(['read', 'edit'])
 
   function statusLabel(): string {
-    const { auto, confirmed, blocked } = stats
-    const counts =
-      auto + confirmed + blocked === 0 ? 'confirm ✓' : `auto:${auto} ok:${confirmed} no:${blocked}`
-    const wTag = repoWriteLock ? '' : ` ${YELLOW}w:free`
-    return `${GREEN}🔒 ${counts}${wTag}${RESET} ·`
+    const wTag = repoWriteLock ? '' : ' w:free'
+    return `safety 🔒${wTag}`
   }
 
   function updateStatus(ctx: ExtensionContext) {
-    ctx.ui.setStatus(
-      'gipi-safety',
-      enabled ? statusLabel() : `${YELLOW}🤖 auto-approve ✓${RESET} ·`,
-    )
+    ctx.ui.setStatus('gipi-safety', enabled ? statusLabel() : 'safety auto ✓')
   }
 
   async function applyGuard(

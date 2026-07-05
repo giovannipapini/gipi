@@ -264,7 +264,7 @@ export default function extension(pi: ExtensionAPI) {
 
           // Extension statuses from other extensions
           const statuses = [...footerData.getExtensionStatuses().values()].filter(Boolean)
-          const segStatuses = statuses.join(' ')
+          const segStatuses = statuses.join(' · ')
 
           // Assemble status line
           let left = ` ${segDir}${sep}${segModel}${sep}${segThink}${sep}${segCtx}${sep}${segCost}`
