@@ -314,14 +314,25 @@ export default function extension(pi: ExtensionAPI) {
           let diffSegment = ''
           const branch = footerData.getGitBranch()
           if (branch) {
-            gitSegment = theme.fg('accent', branch)
+            // Sync indicator: ≡ up-to-date, ↑N ahead, ↓N behind, ↕ diverged
+            let sync = ''
+            if (gitState) {
+              const { ahead, behind } = gitState
+              if (ahead > 0 && behind > 0) {
+                sync = theme.fg('warning', ` ↕${ahead}↑${behind}↓`)
+              } else if (ahead > 0) {
+                sync = theme.fg('success', ` ↑${ahead}`)
+              } else if (behind > 0) {
+                sync = theme.fg('warning', ` ↓${behind}`)
+              } else {
+                sync = theme.fg('dim', ' ≡')
+              }
+            }
+            gitSegment = theme.fg('accent', branch) + sync
             if (gitState) {
               if (gitState.dirty > 0) gitSegment += ` ${theme.fg('warning', `~${gitState.dirty}`)}`
               if (gitState.untracked > 0)
                 gitSegment += ` ${theme.fg('muted', `?${gitState.untracked}`)}`
-              if (gitState.ahead > 0) gitSegment += ` ${theme.fg('success', `↑${gitState.ahead}`)}`
-              if (gitState.behind > 0)
-                gitSegment += ` ${theme.fg('warning', `↓${gitState.behind}`)}`
               if (gitState.linesAdded > 0 || gitState.linesRemoved > 0) {
                 diffSegment =
                   theme.fg('toolDiffAdded', `+${gitState.linesAdded}`) +
