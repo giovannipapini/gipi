@@ -136,7 +136,8 @@ export default function extension(pi: ExtensionAPI) {
       const { data } = await jsonGet(url.toString(), { headers: authHeaders() }, signal)
 
       const parsed = safeParse(Ctx7LibrarySearchResponse, data, { results: [] })
-      const text = truncateForTool(formatLibraries(parsed.results))
+      const header = `🔍 **Context7 Library Search**  \nLibrary: \`${params.name}\`${params.query ? `  \nContext: \`${params.query}\`` : ''}`
+      const text = truncateForTool(header + '\n\n' + formatLibraries(parsed.results))
 
       return {
         content: [{ type: 'text', text }],
@@ -175,7 +176,8 @@ export default function extension(pi: ExtensionAPI) {
       const { data } = await jsonGet(url.toString(), { headers: authHeaders() }, signal)
 
       const parsed = safeParse(Ctx7DocsResponse, data, {})
-      const text = truncateForTool(formatDocs(parsed))
+      const header = `📚 **Context7 Documentation Query**  \nLibrary: \`${params.library_id}\`  \nQuery: \`${params.query}\``
+      const text = truncateForTool(header + '\n\n' + formatDocs(parsed))
 
       return {
         content: [{ type: 'text', text }],
