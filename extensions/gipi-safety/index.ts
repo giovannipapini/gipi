@@ -7,6 +7,7 @@ import type { Plugin, PluginResult } from './plugin.js'
 import { safeRulesPlugin } from './plugin-safe-rules.js'
 import { substitutionPlugin } from './plugin-substitutions.js'
 import {
+  isBlockedPath,
   isDangerousCommand,
   isInGitRepo,
   isSafeBashSegment,
@@ -314,6 +315,12 @@ export default function (pi: ExtensionAPI) {
       const rawPath = stringInput(inp, 'path')
       if (!rawPath) return
       const path = resolveToolPath(ctx, rawPath)
+      // Hard block sensitive paths — the LLM must not write/edit .env, .git/, node_modules/,
+      // .venv/, or venv/. These are too sensitive for interactive override.
+      if (isBlockedPath(path)) {
+        const basename = path.split('/').pop() ?? path
+        return { block: true, reason: `Writing to ${basename} is blocked (sensitive path)` }
+      }
       const action = fileCfg.actionOf(inp)
       const inTrackedRepo = !repoWriteLock && !isUnderDotGit(path) && isInGitRepo(path)
       result = await applyGuard(

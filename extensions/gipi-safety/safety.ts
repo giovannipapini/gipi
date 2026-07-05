@@ -229,6 +229,24 @@ export function skipGlobalFlags(
 // Examples: /^\/tmp\//, /\/node_modules\//
 export const SAFE_PATH_PATTERNS: RegExp[] = []
 
+// Paths that the LLM should never write to or edit via file tools.
+// These patterns are checked against the resolved absolute file path.
+// Blocking is a hard block — the operation is rejected without user prompt,
+// because these files/directories are too sensitive for interactive override.
+export const BLOCKED_PATH_PATTERNS: RegExp[] = [
+  // .env files — contain secrets, API keys, credentials
+  // Matches .env, .env.local, .env.production, etc. at any directory level
+  /(?:^|\/)\.env(?:\.[a-zA-Z0-9_]+)?$/,
+  // .git/ directory — repo config, hooks, credentials, refs
+  /(?:^|\/)\.git\//,
+  // node_modules/ — managed by package manager, modifying breaks invariants
+  /(?:^|\/)node_modules\//,
+  // .venv/ directory — Python virtual environments managed by uv/poetry/virtualenv
+  /(?:^|\/)\.venv\//,
+  // venv/ directory — Python virtual environment (common alternative name)
+  /(?:^|\/)venv\//,
+]
+
 // sed is safe when it has no -i/--in-place, no `e` command, and no `w` command.
 // Three dangerous capabilities in GNU/BSD sed:
 //   -i / --in-place       — edits files in place
@@ -343,6 +361,11 @@ export function isSafeBashSegment(segment: string): boolean {
 
 export function isSafePath(path: string): boolean {
   return SAFE_PATH_PATTERNS.some((pattern) => pattern.test(path))
+}
+
+/** True when `path` matches a blocked pattern — the LLM must not write/edit this path. */
+export function isBlockedPath(path: string): boolean {
+  return BLOCKED_PATH_PATTERNS.some((pattern) => pattern.test(path))
 }
 
 export const DANGEROUS_PATTERNS: RegExp[] = [
