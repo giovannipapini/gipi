@@ -27,6 +27,14 @@ repos:
     hooks:
       - id: biome-check
         name: biome check
-        entry: /opt/homebrew/bin/biome check --write --files-ignore-unknown=true --no-errors-on-unmatched
+        entry: biome check --write --files-ignore-unknown=true --no-errors-on-unmatched
         language: system
         types: [text]
+
+      # TypeScript — typecheck all extensions
+      - id: tsc
+        name: typecheck
+        entry: pnpm run typecheck
+        language: system
+        types: [text]
+        pass_filenames: false
