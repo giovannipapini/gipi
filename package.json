@@ -46,10 +46,14 @@
     "@earendil-works/pi-coding-agent": "^0.80.3",
     "@earendil-works/pi-tui": "^0.80.3",
     "@types/node": "^22",
+    "@types/node-notifier": "^8.0.5",
     "execa": "^9.6.1",
     "nanoid": "^5.1.16",
     "typebox": "^1.1.38",
     "typescript": "^5.7",
     "zod": "^4.4.3"
+  },
+  "dependencies": {
+    "node-notifier": "^10.0.1"
   }
 }
