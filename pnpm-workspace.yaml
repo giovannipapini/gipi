@@ -1,0 +1,22 @@
+# ── pnpm workspace & supply-chain security ──────────────────────────
+# Sources:
+#   lirantal/npm-security-best-practices — https://github.com/lirantal/npm-security-best-practices
+#   pnpm supply chain docs — https://pnpm.io/supply-chain-security
+
+# Block install scripts from all dependencies by default (pnpm 10+).
+# Only explicitly allowed packages may run build scripts.
+# For this project, no deps need install scripts — pi bundles its own core.
+onlyBuiltDependencies: []
+
+# Fail install if any dependency tries to run a build script not in
+# the allow-list above. (pnpm 10.3+)
+strictDepBuilds: true
+
+# Block dependencies sourced from git URLs — must come from the
+# registry (pnpm 10.27+). Git deps bypass registry security controls.
+blockExoticSubdeps: true
+
+# ── In future (pnpm >= 10.21), uncomment to enable trust policy ──
+# trustPolicy: no-downgrade
+# trustPolicyExclude: []
+# trustPolicyIgnoreAfter: 43200

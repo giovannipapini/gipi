@@ -7,10 +7,23 @@
     "pi-package"
   ],
   "license": "MIT",
+  "repository": "github:giovannipapini/gipi",
+  "bugs": "https://github.com/giovannipapini/gipi/issues",
   "packageManager": "pnpm@10.8.0",
   "engines": {
-    "pnpm": ">=10",
-    "node": ">=20"
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "type": "module",
+  "files": [
+    "extensions/",
+    "themes/"
+  ],
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "preinstall": "node -e \"process.exit(process.env.CI ? 0 : 1)\" || echo '⚠️  Use pnpm install, not npm install' && false"
   },
   "pi": {
     "extensions": [
