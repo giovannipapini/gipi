@@ -18,6 +18,8 @@
  *   web_scrape   — URL → markdown / structured (Firecrawl, → Exa fallback)
  *   web_map      — list all URLs on a site     (Firecrawl)
  *   web_crawl    — crawl a site's pages        (Firecrawl)
+ *   gh           — GitHub CLI wrapper            (gh if installed)
+ *   glab         — GitLab CLI wrapper            (glab if installed)
  *
  * Placement: ~/.pi/agent/extensions/gipi-webx/index.ts (global, via Dotbot)
  */
@@ -42,6 +44,7 @@ import {
   FcSearchResponse,
   safeParse,
 } from '../../lib/parse.js'
+import { registerGhGlab } from './gh-glab.js'
 
 const EXA_BASE = 'https://api.exa.ai'
 const FC_BASE = 'https://api.firecrawl.dev'
@@ -571,4 +574,5 @@ export default function extension(pi: ExtensionAPI) {
   registerWebCrawl(pi)
   registerWebShortcuts(pi)
   registerWebSessionHooks(pi)
+  registerGhGlab(pi)
 }
