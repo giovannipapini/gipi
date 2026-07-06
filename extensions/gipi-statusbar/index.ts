@@ -50,6 +50,7 @@ export default function extension(pi: ExtensionAPI) {
   // Tab title state — stored from session_start
   let setTitle: ((title: string) => void) | undefined
   let sessionId = ''
+  let sessionName = ''
 
   /** Full path with ~/ for home directory. */
   function displayPath(p: string): string {
@@ -102,7 +103,11 @@ export default function extension(pi: ExtensionAPI) {
 
   /** Set the terminal tab/window title using the stored ctx.ui.setTitle. */
   function updateTabTitle() {
-    setTitle?.(`pi-agent #${sessionId}`)
+    if (sessionName) {
+      setTitle?.(`pi-agent (${sessionName})`)
+    } else {
+      setTitle?.(`pi-agent #${sessionId}`)
+    }
   }
 
   // ─── Git ────────────────────────────────────────────────────────────────────
@@ -224,10 +229,11 @@ export default function extension(pi: ExtensionAPI) {
 
     requestGitRefresh(ctx.cwd)
 
-    // Set initial tab title — queueMicrotask to run after pi's own updateTerminalTitle()
+    // Set initial tab title — setTimeout to run after pi's own updateTerminalTitle()
     sessionId = ctx.sessionManager.getSessionId() ?? ''
+    sessionName = pi.getSessionName() ?? ''
     setTitle = (title: string) => ctx.ui.setTitle(title)
-    queueMicrotask(() => updateTabTitle())
+    setTimeout(() => updateTabTitle(), 0)
 
     // Footer bar
     ctx.ui.setFooter((tui, theme, footerData) => {
@@ -355,6 +361,12 @@ export default function extension(pi: ExtensionAPI) {
       refreshSessionCost(ctx)
       requestRender()
     }
+  })
+
+  // Re-apply tab title when session info changes (pi restores default title)
+  pi.on('session_info_changed', async (event) => {
+    sessionName = event.name ?? ''
+    updateTabTitle()
   })
 
   pi.on('session_shutdown', async () => {
