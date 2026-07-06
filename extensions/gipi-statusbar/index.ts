@@ -2,11 +2,8 @@
  * gipi-statusbar extension — replaces the built-in pi footer with a richer status line
  * and sets the terminal tab/window title via Kitty/Ghostty/iTerm2 OSC protocol.
  *
- * Tab title format (idle):
- *   pi § <fullpath> § <model> § <branch> § think:<level>
- *
- * Tab title format (running):
- *   pi (●) § <fullpath> § <model> § <branch> § think:<level>
+ * Tab title format:
+ *   pi-agent #<full session id>
  *
  * Status bar layout:
  *   ~/project │ model │ think:high │ ctx [▓▓▓░░░░░] 42% (85k/200k) │ $— │ branch ~2 ?1 ↑1 │ +10/-5
@@ -50,10 +47,9 @@ export default function extension(pi: ExtensionAPI) {
 
   // Agent running state
   let agentRunning = false
-  // Current tab title components
-  let tabDir = ''
-  let tabModel = ''
-  let tabBranch = ''
+  // Tab title state — stored from session_start
+  let setTitle: ((title: string) => void) | undefined
+  let sessionId = ''
 
   /** Full path with ~/ for home directory. */
   function displayPath(p: string): string {
@@ -104,28 +100,9 @@ export default function extension(pi: ExtensionAPI) {
 
   // ─── Tab / Window Title ────────────────────────────────────────────────────
 
-  /** Build and write the tab/window title from current state. */
+  /** Set the terminal tab/window title using the stored ctx.ui.setTitle. */
   function updateTabTitle() {
-    const parts: string[] = []
-    if (tabDir) parts.push(tabDir)
-    if (tabModel) parts.push(tabModel)
-    if (tabBranch) parts.push(tabBranch)
-
-    // Always show thinking level
-    parts.push(`think:${currentThinkingLevel}`)
-
-    const title = agentRunning ? `pi (●) § ${parts.join(' § ')}` : `pi § ${parts.join(' § ')}`
-
-    // We update via a deferred global render callback since setTitle needs ctx,
-    // but it's safe to call via the stored callbacks
-    for (const cb of renderCallbacks) cb()
-    // The setTitle is called from within the footer render via a separate mechanism.
-    // We write it directly to the terminal using the standard OSC escape sequence:
-    //   ESC ] 0 ; title BEL   — sets both window title and icon/tab title.
-    // This is the universal protocol understood by Kitty, Ghostty, iTerm2,
-    // WezTerm, xterm, Terminal.app, Alacritty, and most modern terminals.
-    const osc = `\x1b]0;${title}\x07`
-    process.stdout.write(osc)
+    setTitle?.(`pi-agent #${sessionId}`)
   }
 
   // ─── Git ────────────────────────────────────────────────────────────────────
@@ -247,19 +224,16 @@ export default function extension(pi: ExtensionAPI) {
 
     requestGitRefresh(ctx.cwd)
 
-    // Set initial tab title
-    tabDir = displayPath(ctx.cwd)
-    tabModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : ''
-    tabBranch = ''
-    updateTabTitle()
+    // Set initial tab title — queueMicrotask to run after pi's own updateTerminalTitle()
+    sessionId = ctx.sessionManager.getSessionId() ?? ''
+    setTitle = (title: string) => ctx.ui.setTitle(title)
+    queueMicrotask(() => updateTabTitle())
 
     // Footer bar
     ctx.ui.setFooter((tui, theme, footerData) => {
       const footerRender = () => tui.requestRender()
       renderCallbacks.push(footerRender)
       const unsubBranch = footerData.onBranchChange(() => {
-        tabBranch = footerData.getGitBranch() ?? ''
-        updateTabTitle()
         tui.requestRender()
       })
 
@@ -364,11 +338,8 @@ export default function extension(pi: ExtensionAPI) {
     })
   })
 
-  pi.on('agent_start', async (_event, ctx) => {
+  pi.on('agent_start', async () => {
     agentRunning = true
-    tabModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : ''
-    tabBranch = ''
-    updateTabTitle()
     requestRender()
   })
 
@@ -376,8 +347,6 @@ export default function extension(pi: ExtensionAPI) {
     agentRunning = false
     refreshSessionCost(ctx)
     requestGitRefresh(ctx.cwd)
-    tabModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : ''
-    updateTabTitle()
     requestRender()
   })
 
