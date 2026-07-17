@@ -238,6 +238,9 @@ export default function (pi: ExtensionAPI) {
     // Use typed access for bash_async_manage action check
     const manageKill =
       isToolCallEventType('bash_async_manage', event) && event.input.action === 'kill'
+    // Sensitive paths (e.g. .env, .git/): always ask, even when safety is disabled
+    const rawFileInput = fileCfg ? stringInput(inp, 'path') : undefined
+    const sensitiveFile = !!rawFileInput && isBlockedPath(resolveToolPath(ctx, rawFileInput))
 
     // plugin pipeline for file tools
     let filePipelineHandled = false
@@ -289,7 +292,7 @@ export default function (pi: ExtensionAPI) {
 
     const command = stringInput(inp, 'command') ?? ''
     const forcedConfirm = !!shellCfg && isDangerousCommand(command)
-    if (!enabled && !forcedConfirm && !manageKill) return
+    if (!enabled && !forcedConfirm && !manageKill && !sensitiveFile) return
     if (!ctx.hasUI)
       return { block: true, reason: 'Tool confirmation active: no UI available for approval' }
 
@@ -315,20 +318,17 @@ export default function (pi: ExtensionAPI) {
       const rawPath = stringInput(inp, 'path')
       if (!rawPath) return
       const path = resolveToolPath(ctx, rawPath)
-      // Hard block sensitive paths — the LLM must not write/edit .env, .git/, node_modules/,
-      // .venv/, or venv/. These are too sensitive for interactive override.
-      if (isBlockedPath(path)) {
-        const basename = path.split('/').pop() ?? path
-        return { block: true, reason: `Writing to ${basename} is blocked (sensitive path)` }
-      }
+
       const action = fileCfg.actionOf(inp)
       const inTrackedRepo = !repoWriteLock && !isUnderDotGit(path) && isInGitRepo(path)
       result = await applyGuard(
         ctx,
-        isSafePath(path) || inTrackedRepo || PLUGINS.some((p) => p.isSafePath?.(path)),
+        !sensitiveFile &&
+          (isSafePath(path) || inTrackedRepo || PLUGINS.some((p) => p.isSafePath?.(path))),
         allowedPaths,
         `${ctx.cwd}\0${action}\0${path}`,
         () => confirmFileOp(ctx, action, path),
+        sensitiveFile,
       )
     } else if (manageKill) {
       const id = stringInput(inp, 'id')
