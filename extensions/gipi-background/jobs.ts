@@ -1,4 +1,4 @@
-import { closeSync, existsSync, openSync, readSync, statSync } from 'node:fs'
+import { closeSync, existsSync, openSync, readSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getShellConfig } from '@earendil-works/pi-coding-agent'
 import type { Options } from 'execa'
@@ -81,59 +81,79 @@ export function createRegistry(sessionId: string, onChange: () => void): JobRegi
       const stdoutPath = join(sessionDir(sessionId), `${id}.stdout`)
       const stderrPath = join(sessionDir(sessionId), `${id}.stderr`)
 
-      const { shell: shellPath } = getShellConfig()
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const execaOpts = {
-        cwd,
-        shell: shellPath,
-        detached: IS_UNIX,
-        stdin: 'ignore',
-        stdout: { file: stdoutPath },
-        stderr: { file: stderrPath },
-      } satisfies Options
-      const child = execaCommand(command, execaOpts)
-
+      // Pre-build the job object so we can return it even if spawning fails.
       const job: Job = {
         id,
-        pid: child.pid ?? -1,
+        pid: -1,
         command,
         cwd,
         startedAt: Date.now(),
-        status: 'running',
+        status: 'failed',
         stdoutPath,
         stderrPath,
         stdoutOffset: 0,
         stderrOffset: 0,
         timeoutSeconds,
       }
-      jobs.set(id, job)
 
-      // Attach listeners BEFORE closing the parent's copy of the fds and
-      // BEFORE any async hop, so a synchronous spawn error is still caught.
-      child.on('exit', (code, signal) => markExited(job, code, signal))
-      child.on('error', () => {
-        job.endedAt = Date.now()
-        job.status = 'failed'
-        clearTimer(sigkillTimers, job.id)
-        clearTimer(timeoutTimers, job.id)
+      try {
+        const { shell: shellPath } = getShellConfig()
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        const execaOpts = {
+          cwd,
+          shell: shellPath,
+          detached: IS_UNIX,
+          stdin: 'ignore',
+          stdout: { file: stdoutPath },
+          stderr: { file: stderrPath },
+        } satisfies Options
+        const child = execaCommand(command, execaOpts)
+
+        job.pid = child.pid ?? -1
+        job.status = 'running'
+        jobs.set(id, job)
+
+        // Attach listeners BEFORE closing the parent's copy of the fds and
+        // BEFORE any async hop, so a synchronous spawn error is still caught.
+        child.on('exit', (code, signal) => markExited(job, code, signal))
+        child.on('error', () => {
+          job.endedAt = Date.now()
+          job.status = 'failed'
+          clearTimer(sigkillTimers, job.id)
+          clearTimer(timeoutTimers, job.id)
+          notifyChange()
+        })
+        if (IS_UNIX) child.unref()
+
+        if (timeoutSeconds && timeoutSeconds > 0) {
+          timeoutTimers.set(
+            id,
+            setTimeout(() => {
+              timeoutTimers.delete(id)
+              if (jobs.get(id)?.status === 'running') {
+                killProcessTree(job.pid, 'SIGTERM')
+                scheduleSigkill(job)
+              }
+            }, timeoutSeconds * 1000),
+          )
+        }
+
         notifyChange()
-      })
-      if (IS_UNIX) child.unref()
-
-      if (timeoutSeconds && timeoutSeconds > 0) {
-        timeoutTimers.set(
-          id,
-          setTimeout(() => {
-            timeoutTimers.delete(id)
-            if (jobs.get(id)?.status === 'running') {
-              killProcessTree(job.pid, 'SIGTERM')
-              scheduleSigkill(job)
-            }
-          }, timeoutSeconds * 1000),
-        )
+      } catch (err) {
+        // Spawn failed (e.g. shell not found, ENOENT). Register as failed
+        // so the caller can inspect the error via bash_async_manage stderr.
+        job.endedAt = Date.now()
+        job.exitCode = null
+        jobs.set(id, job)
+        // Write the error to stderr for post-mortem inspection.
+        try {
+          writeFileSync(stderrPath, `spawn error: ${(err as Error).message ?? err}\n`, 'utf8')
+        } catch {
+          // best-effort
+        }
+        notifyChange()
       }
 
-      notifyChange()
       return job
     },
 
