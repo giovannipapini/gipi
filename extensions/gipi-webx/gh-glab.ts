@@ -20,7 +20,7 @@
 
 import { execSync } from 'node:child_process'
 import { StringEnum } from '@earendil-works/pi-ai'
-import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 import { Type } from 'typebox'
 
 import { clipText, truncateForTool } from '../../lib/format.js'
@@ -307,7 +307,7 @@ function fmtMrList(mrs: GlabEntity[]): string {
     .join('\n')
 }
 
-function fmtMrView(mr: GlabEntity): string {
+function _fmtMrView(mr: GlabEntity): string {
   const ref = mr.references?.short ?? `!${mr.iid}`
   const lines: string[] = [
     `## ${ref} - ${mr.title}`,

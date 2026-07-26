@@ -134,7 +134,7 @@ export default function extension(pi: ExtensionAPI) {
 
       const parsed = safeParse(Ctx7LibrarySearchResponse, data, { results: [] })
       const header = `🔍 ctx7_library — \`${params.name}\`${params.query ? ` (${params.query})` : ''}`
-      const text = truncateForTool(header + '\n\n' + formatLibraries(parsed.results))
+      const text = truncateForTool(`${header}\n\n${formatLibraries(parsed.results)}`)
 
       return {
         content: [{ type: 'text', text }],
@@ -174,7 +174,7 @@ export default function extension(pi: ExtensionAPI) {
 
       const parsed = safeParse(Ctx7DocsResponse, data, {})
       const header = `📚 ctx7_docs — \`${params.library_id}\` — ${params.query}`
-      const text = truncateForTool(header + '\n\n' + formatDocs(parsed))
+      const text = truncateForTool(`${header}\n\n${formatDocs(parsed)}`)
 
       return {
         content: [{ type: 'text', text }],

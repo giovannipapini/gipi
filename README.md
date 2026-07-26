@@ -1,6 +1,6 @@
 # gipi
 
-Custom [pi](https://pi.dev/) extensions and themes for my daily driver setup.
+Custom [pi](https://pi.dev/) extensions, skills, and themes for my daily driver setup.
 
 ## Extensions
 
@@ -14,6 +14,12 @@ Custom [pi](https://pi.dev/) extensions and themes for my daily driver setup.
 | **gipi-statusbar** | Custom footer with git status, context usage, cost, model info |
 | **gipi-webx** | Web search/crawl tools backed by Exa and Firecrawl |
 
+## Skill
+
+| Skill | Description |
+|-------|-------------|
+| **clean-code** | Reference for clean code principles — naming, functions, SOLID, code smells, simple design rules |
+
 ## Theme
 
 | Theme | Description |
@@ -22,13 +28,16 @@ Custom [pi](https://pi.dev/) extensions and themes for my daily driver setup.
 
 ## Usage
 
-Clone the repo and symlink extensions into your pi config:
+### Install as a pi package (recommended)
 
 ```bash
-git clone https://github.com/giovannipapini/gipi ~/.pi/agent/git/gipi
+pi install git:github.com/giovannipapini/gipi
+pi reload
 ```
 
-Or symlink individual extensions:
+This installs all extensions, skills, and themes in one command.
+
+### Or symlink individual extensions
 
 ```bash
 ln -s "$PWD/extensions/gipi-safety" ~/.pi/agent/extensions/
@@ -40,11 +49,10 @@ Then run `/reload` in pi or restart.
 ## Development
 
 ```bash
-# Check all files
-biome check .
-
-# Auto-fix formatting + lint
-biome check --write .
+pnpm install
+pnpm typecheck   # TypeScript checks
+pnpm lint        # Biome formatting + lint
+pnpm lint:fix    # Auto-fix
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev guide.

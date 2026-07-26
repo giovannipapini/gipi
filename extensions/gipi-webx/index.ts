@@ -103,7 +103,7 @@ const textResult = (text: string) => ({
   details: {},
 })
 
-function shortUrl(u: string): string {
+function _shortUrl(u: string): string {
   try {
     const { host, pathname } = new URL(u)
     return host + pathname
@@ -193,7 +193,7 @@ function registerWebSearch(pi: ExtensionAPI) {
           signal,
         )
         const parsed = safeParse(ExaSearchResponse, data, { results: [] })
-        return textResult(paramHeader + '\n\n' + fmtResults(parsed.results.map(exaResult)))
+        return textResult(`${paramHeader}\n\n${fmtResults(parsed.results.map(exaResult))}`)
       }
 
       const { data } = await jsonPost(
@@ -202,7 +202,7 @@ function registerWebSearch(pi: ExtensionAPI) {
         { query: params.query, limit: numResults },
         signal,
       )
-      return textResult(paramHeader + '\n\n' + fmtResults(firecrawlSearchResults(data)))
+      return textResult(`${paramHeader}\n\n${fmtResults(firecrawlSearchResults(data))}`)
     },
   })
 }
@@ -275,7 +275,7 @@ function registerWebSimilar(pi: ExtensionAPI) {
         signal,
       )
       const parsed = safeParse(ExaSearchResponse, data, { results: [] })
-      return textResult(header + '\n\n' + fmtResults(parsed.results.map(exaResult)))
+      return textResult(`${header}\n\n${fmtResults(parsed.results.map(exaResult))}`)
     },
   })
 }
