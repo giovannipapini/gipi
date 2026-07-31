@@ -33,8 +33,19 @@ export function createRegistry(sessionId: string, onChange: () => void): JobRegi
   }
 
   function notifyChange() {
-    persistNow()
-    onChange()
+    // Runs from child-process event handlers ('exit'/'error'), where ANY throw
+    // becomes an uncaughtException → pi's uncaughtCrash() → session death.
+    // Guard each step so a disk/UI hiccup can never kill the session.
+    try {
+      persistNow()
+    } catch (err) {
+      console.error('[gipi-background] persist failed:', err)
+    }
+    try {
+      onChange()
+    } catch (err) {
+      console.error('[gipi-background] onChange failed:', err)
+    }
   }
 
   function scheduleSigkill(job: Job) {
@@ -106,6 +117,12 @@ export function createRegistry(sessionId: string, onChange: () => void): JobRegi
           stdin: 'ignore',
           stdout: { file: stdoutPath },
           stderr: { file: stderrPath },
+          // CRITICAL: never let execa reject. The promise is intentionally not
+          // awaited (the job outlives this call), and execa's default
+          // `reject: true` makes a non-zero exit / signal kill reject it →
+          // unhandled promise rejection → Node crashes → pi session dies.
+          // Status is tracked via the 'exit'/'error' events below instead.
+          reject: false,
         } satisfies Options
         const child = execaCommand(command, execaOpts)
 
