@@ -5,7 +5,11 @@ import { Key } from '@earendil-works/pi-tui'
 import { notifyStuck, resetStuckNotified } from './notify-stuck.js'
 import type { Plugin, PluginResult } from './plugin.js'
 import { safeRulesPlugin } from './plugin-safe-rules.js'
-import { substitutionPlugin } from './plugin-substitutions.js'
+import {
+  setSubstitutionEnforcement,
+  substitutionEnforcementEnabled,
+  substitutionPlugin,
+} from './plugin-substitutions.js'
 import {
   isBlockedPath,
   isDangerousCommand,
@@ -123,7 +127,8 @@ export default function (pi: ExtensionAPI) {
 
   function statusLabel(): string {
     const wTag = repoWriteLock ? '' : ' w:free'
-    return `safety 🔒${wTag}`
+    const tTag = substitutionEnforcementEnabled() ? ' subst' : ''
+    return `safety 🔒${wTag}${tTag}`
   }
 
   function updateStatus(ctx: ExtensionContext) {
@@ -183,6 +188,18 @@ export default function (pi: ExtensionAPI) {
     updateStatus(ctx)
   }
 
+  function toggleSubstitutionEnforcement(ctx: ExtensionContext) {
+    const on = !substitutionEnforcementEnabled()
+    setSubstitutionEnforcement(on)
+    ctx.ui.notify(
+      on
+        ? 'Tool substitution enforced — grep/find/jq/npm/yarn are intercepted (→ rg/fd/jaq/pnpm)'
+        : 'Tool substitution prompt-only — no interception',
+      'info',
+    )
+    updateStatus(ctx)
+  }
+
   pi.registerCommand('confirm', {
     description: 'Toggle tool confirmation (bash/write/edit require approval)',
     handler: async (_args, ctx) => toggle(ctx),
@@ -201,6 +218,17 @@ export default function (pi: ExtensionAPI) {
   pi.registerShortcut(Key.ctrlShift('w'), {
     description: 'Toggle repo write lock (/confirm-writes)',
     handler: async (ctx) => toggleRepoWriteLock(ctx),
+  })
+
+  pi.registerCommand('tool-prefer', {
+    description:
+      'Toggle hard block on non-preferred tools (grep/find/jq/npm/yarn → rg/fd/jaq/pnpm)',
+    handler: async (_args, ctx) => toggleSubstitutionEnforcement(ctx),
+  })
+
+  pi.registerShortcut(Key.ctrlShift('t'), {
+    description: 'Toggle tool substitution enforcement (/tool-prefer)',
+    handler: async (ctx) => toggleSubstitutionEnforcement(ctx),
   })
 
   pi.on('before_agent_start', async (event) => {

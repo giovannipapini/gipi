@@ -1,6 +1,17 @@
 import { commandTokens, type Plugin, type PluginResult } from './plugin.js'
 import { promptSubstitution } from './ui.js'
 
+// Hard interception is opt-in: by default the plugin only injects prompt preferences
+// (soft steering). Toggle via /tool-prefer (ctrl+shift+t) to make guardShell intercept
+// bash calls that use non-preferred tools.
+let enforced = false
+export function setSubstitutionEnforcement(on: boolean): void {
+  enforced = on
+}
+export function substitutionEnforcementEnabled(): boolean {
+  return enforced
+}
+
 // add/remove pairs here to change enforcement
 const SUBSTITUTIONS: Array<{ from: string[]; to: string }> = [
   { from: ['grep', 'egrep', 'fgrep'], to: 'rg' },
@@ -54,6 +65,7 @@ export const substitutionPlugin: Plugin = {
   },
 
   async guardShell(_toolName, command, ctx, session): Promise<PluginResult> {
+    if (!enforced) return undefined // prompt-only mode — never intercept
     const byPreferred = detectSubstitutions(command)
     if (byPreferred.size === 0) return undefined
 
