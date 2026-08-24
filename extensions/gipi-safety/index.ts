@@ -226,7 +226,7 @@ export default function (pi: ExtensionAPI) {
     handler: async (_args, ctx) => toggleSubstitutionEnforcement(ctx),
   })
 
-  pi.registerShortcut(Key.ctrlShift('t'), {
+  pi.registerShortcut(Key.alt('s'), {
     description: 'Toggle tool substitution enforcement (/tool-prefer)',
     handler: async (ctx) => toggleSubstitutionEnforcement(ctx),
   })

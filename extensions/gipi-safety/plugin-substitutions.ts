@@ -2,7 +2,7 @@ import { commandTokens, type Plugin, type PluginResult } from './plugin.js'
 import { promptSubstitution } from './ui.js'
 
 // Hard interception is opt-in: by default the plugin only injects prompt preferences
-// (soft steering). Toggle via /tool-prefer (ctrl+shift+t) to make guardShell intercept
+// (soft steering). Toggle via /tool-prefer (alt+s) to make guardShell intercept
 // bash calls that use non-preferred tools.
 let enforced = false
 export function setSubstitutionEnforcement(on: boolean): void {
