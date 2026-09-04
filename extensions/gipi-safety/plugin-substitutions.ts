@@ -22,7 +22,7 @@ const SUBSTITUTIONS: Array<{ from: string[]; to: string }> = [
 
 // rules injected into the system prompt that have no corresponding substitution pair
 const EXTRA_PROMPT_RULES = [
-  'Never use `pip install` — use `pipx` for Python CLI tools.',
+  'Never use `pip install` — use `uv tool install` for Python CLI tools.',
   'Never use `/tmp` directly — always use `mktemp -d` to create temporary directories.',
   '`npx` is fine; prefer `pnpm dlx` only for explicit package runs in scripts.',
 ]
