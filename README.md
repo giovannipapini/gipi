@@ -12,6 +12,7 @@ Custom [pi](https://pi.dev/) extensions, skills, and themes for my daily driver 
 | **gipi-safety** | Interactive tool confirmation guard with plugin rules |
 | **gipi-spinner** | Animated spinner with witty verbs during tool execution |
 | **gipi-statusbar** | Custom footer with git status, context usage, cost, model info |
+| **gipi-rtk** | RTK command proxying — proxies eligible bash commands through `rtk` for 50-90% output token savings |
 | **gipi-webx** | Web search/crawl tools backed by Exa and Firecrawl |
 
 ## Skill
