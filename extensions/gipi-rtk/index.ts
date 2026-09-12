@@ -182,6 +182,7 @@ function updateStatus(ctx: ExtensionContext) {
   if (analytics.proxied > 0 || analytics.skipped > 0) {
     statusParts.push(`${analytics.proxied}`)
   }
+  statusParts.push('✓')
   ctx.ui.setStatus('gipi-rtk', statusParts.join(' '))
 }
 
