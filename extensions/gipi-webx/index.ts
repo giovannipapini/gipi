@@ -550,7 +550,7 @@ function registerWebSessionHooks(pi: ExtensionAPI) {
 
     const active = [exa && 'exa', fc && 'fc'].filter(Boolean) as string[]
     if (active.length) {
-      ctx.ui.setStatus('gipi-webx', `web ${active.join('+')} \u2713`)
+      ctx.ui.setStatus('gipi-webx', `web ✓`)
     } else {
       ctx.ui.notify(
         'Web extension loaded, but neither EXA_API_KEY nor FIRECRAWL_API_KEY is set — tools are disabled.',

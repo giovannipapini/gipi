@@ -180,7 +180,7 @@ function updateStatus(ctx: ExtensionContext) {
   if (!rtkAvailable) return
   const statusParts = [`rtk`]
   if (analytics.proxied > 0 || analytics.skipped > 0) {
-    statusParts.push(`⬇${analytics.proxied}`)
+    statusParts.push(`${analytics.proxied}`)
   }
   ctx.ui.setStatus('gipi-rtk', statusParts.join(' '))
 }

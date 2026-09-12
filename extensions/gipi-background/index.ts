@@ -55,7 +55,7 @@ function previewTail(content: string): string {
 function statusLabel(reg: JobRegistry): string | undefined {
   const running = reg.getAll().filter((j) => j.status === 'running').length
   if (running === 0) return undefined
-  return `bg ${running} ✓`
+  return `bg ${running}`
 }
 
 const STATUS_GLYPH: Record<Job['status'], string> = {

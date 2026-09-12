@@ -131,9 +131,10 @@ function cliCheck(name: string): boolean {
 
 function cliLabel(): string {
   const parts: string[] = []
-  if (cliState.gh) parts.push('gh ✓')
-  if (cliState.glab) parts.push('glab ✓')
-  return parts.length > 0 ? parts.join(' ') : 'gh/glab —'
+  if (cliState.gh) parts.push('gh')
+  if (cliState.glab) parts.push('glab')
+  if (parts.length === 0) return 'gh glab'
+  return parts.join(' ') + ' ✓'
 }
 
 // ── CLI execution (via pi.exec) ────────────────────────────────────────────
