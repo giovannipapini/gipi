@@ -10,9 +10,6 @@ import {
   isSafeTerraformCommand,
 } from './safety-toolchains.js'
 
-// Each rule set groups read-only subcommands for one tool family.
-// Add new entries here to extend auto-approval; no other file needs to change.
-
 const GH_PHRASES = [
   'gh pr list',
   'gh pr view',
@@ -55,7 +52,6 @@ const BREW_PHRASES = [
   'brew --cellar',
 ] as const
 
-// macOS system-info commands that are read-only
 const MACOS_PHRASES = [
   'defaults read',
   'launchctl list',
@@ -105,8 +101,7 @@ const GLAB_PHRASES = [
 ] as const
 
 // Rust / Go / Python version/metadata queries.
-// "cargo check", "cargo test --no-run", and "cargo clippy" are excluded: they can
-// execute build scripts/proc macros or admit fix/write modes.
+// Cargo build/test/clippy excluded: they can execute build scripts or proc macros.
 const DEV_TOOL_PHRASES = [
   'cargo metadata',
   'cargo tree',

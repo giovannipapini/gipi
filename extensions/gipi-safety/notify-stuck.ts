@@ -18,8 +18,6 @@
  * notification banner when the window is unfocused.
  */
 
-import process from 'node:process'
-
 // ── State ────────────────────────────────────────────────────────────
 
 /** Whether a notification has been sent for the current stuck event */

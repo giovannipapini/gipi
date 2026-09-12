@@ -1,6 +1,3 @@
-import { existsSync } from 'node:fs'
-import { dirname } from 'node:path'
-
 // Rejects any single pipeline segment containing shell metacharacters that can chain or
 // redirect execution: redirects (><), sequencing (;), backticks, newlines, $().
 // The < and > characters also block process substitution (<(cmd) / >(cmd)), which
@@ -385,38 +382,4 @@ export const DANGEROUS_PATTERNS: RegExp[] = [
 
 export function isDangerousCommand(command: string): boolean {
   return DANGEROUS_PATTERNS.some((pattern) => pattern.test(command))
-}
-
-export function isUnderDotGit(filePath: string): boolean {
-  return filePath.includes('/.git/') || filePath.endsWith('/.git')
-}
-
-const gitRepoCache = new Map<string, boolean>()
-const CACHE_MAX = 256
-
-function cacheSet(key: string, val: boolean) {
-  if (gitRepoCache.size >= CACHE_MAX) {
-    const oldest = gitRepoCache.keys().next().value
-    if (oldest !== undefined) gitRepoCache.delete(oldest)
-  }
-  gitRepoCache.set(key, val)
-}
-
-export function isInGitRepo(filePath: string): boolean {
-  const start = dirname(filePath)
-  const cached = gitRepoCache.get(start)
-  if (cached !== undefined) return cached
-  let dir = start
-  while (true) {
-    if (existsSync(`${dir}/.git`)) {
-      cacheSet(start, true)
-      return true
-    }
-    const parent = dirname(dir)
-    if (parent === dir) {
-      cacheSet(start, false)
-      return false
-    }
-    dir = parent
-  }
 }
