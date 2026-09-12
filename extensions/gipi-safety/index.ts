@@ -65,7 +65,7 @@ export default function (pi: ExtensionAPI) {
   const FILE_PIPELINE_TOOLS = new Set(['read', 'edit'])
 
   function updateStatus(ctx: ExtensionContext) {
-    ctx.ui.setStatus('gipi-safety', 'safety 🔒')
+    ctx.ui.setStatus('gipi-safety', 'safety')
   }
 
   pi.on('before_agent_start', async (event) => {
