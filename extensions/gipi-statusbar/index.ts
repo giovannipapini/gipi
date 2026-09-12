@@ -32,9 +32,7 @@ export default function extension(pi: ExtensionAPI) {
   let gitRefreshInFlight = false
   let queuedGitCwd: string | undefined
 
-  // Agent running state
   let agentRunning = false
-  // Tab title state — stored from session_start
   let setTitle: ((title: string) => void) | undefined
   let sessionId = ''
   let sessionName = ''
@@ -45,7 +43,6 @@ export default function extension(pi: ExtensionAPI) {
     return home && p.startsWith(home) ? p.replace(home, '~') : p
   }
 
-  // Hints row entries — populated by addShortcut(); external entries inserted inline.
   const shortcutHints: Array<{ display: string; label: string }> = []
 
   /** Register a shortcut and add it to the hints row in one call. */
@@ -73,11 +70,11 @@ export default function extension(pi: ExtensionAPI) {
     return typeof level === 'string' && isThinkingLevel(level) ? level : 'off'
   }
 
-  function refreshSessionCost(ctx: ExtensionContext) {
+  function recalculateSessionCost(ctx: ExtensionContext) {
     let nextCost = 0
-    for (const e of ctx.sessionManager.getBranch()) {
-      if (e.type === 'message' && e.message.role === 'assistant') {
-        const cost = e.message.usage?.cost?.total
+    for (const entry of ctx.sessionManager.getBranch()) {
+      if (entry.type === 'message' && entry.message.role === 'assistant') {
+        const cost = entry.message.usage?.cost?.total
         if (typeof cost === 'number' && Number.isFinite(cost) && cost >= 0) {
           nextCost += cost
         }
@@ -86,9 +83,6 @@ export default function extension(pi: ExtensionAPI) {
     totalCost = Math.max(0, nextCost)
   }
 
-  // ─── Tab / Window Title ────────────────────────────────────────────────────
-
-  /** Set the terminal tab/window title using the stored ctx.ui.setTitle. */
   function updateTabTitle() {
     if (sessionName) {
       setTitle?.(`pi-agent (${sessionName})`)
@@ -97,8 +91,6 @@ export default function extension(pi: ExtensionAPI) {
     }
   }
 
-  // ─── Git ────────────────────────────────────────────────────────────────────
-
   function requestGitRefresh(cwd: string) {
     queuedGitCwd = cwd
     if (gitRefreshTimer) return
@@ -106,11 +98,11 @@ export default function extension(pi: ExtensionAPI) {
       gitRefreshTimer = undefined
       const next = queuedGitCwd
       queuedGitCwd = undefined
-      if (next) void refreshGit(next)
+      if (next) void fetchGitState(next)
     }, 150)
   }
 
-  async function refreshGit(cwd: string) {
+  async function fetchGitState(cwd: string) {
     if (gitRefreshInFlight) {
       queuedGitCwd = cwd
       return
@@ -135,9 +127,9 @@ export default function extension(pi: ExtensionAPI) {
       const untracked = statusLines.filter((l) => l.startsWith('??')).length
 
       const addMatch = diffRes.stdout.match(/(\d+) insertion/)
-      const remMatch = diffRes.stdout.match(/(\d+) deletion/)
+      const deletionMatch = diffRes.stdout.match(/(\d+) deletion/)
       const linesAdded = addMatch ? parseInt(addMatch[1], 10) : 0
-      const linesRemoved = remMatch ? parseInt(remMatch[1], 10) : 0
+      const linesRemoved = deletionMatch ? parseInt(deletionMatch[1], 10) : 0
 
       const ahead = aheadRes.code === 0 ? parseInt(aheadRes.stdout.trim(), 10) || 0 : 0
       const behind = behindRes.code === 0 ? parseInt(behindRes.stdout.trim(), 10) || 0 : 0
@@ -156,31 +148,27 @@ export default function extension(pi: ExtensionAPI) {
     }
   }
 
-  // ─── Formatting Helpers ─────────────────────────────────────────────────────
-
   function formatK(n: number): string {
     return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`
   }
 
-  function miniBar(pct: number, width = 8): string {
+  function progressBar(pct: number, width = 8): string {
     const filled = Math.min(Math.round((pct * width) / 100), width)
     return '▓'.repeat(filled) + '░'.repeat(width - filled)
   }
 
-  function pctColor(pct: number): 'success' | 'warning' | 'error' {
-    if (pct < 50) return 'success'
-    if (pct < 80) return 'warning'
+  function percentColor(percent: number): 'success' | 'warning' | 'error' {
+    if (percent < 50) return 'success'
+    if (percent < 80) return 'warning'
     return 'error'
   }
 
-  function thinkColor(level: ThinkingLevel): 'dim' | 'success' | 'warning' | 'error' {
+  function thinkingColor(level: ThinkingLevel): 'dim' | 'success' | 'warning' | 'error' {
     if (level === 'off') return 'dim'
     if (level === 'minimal' || level === 'low') return 'success'
     if (level === 'medium') return 'warning'
-    return 'error' // high, xhigh
+    return 'error'
   }
-
-  // ─── Shortcuts ──────────────────────────────────────────────────────────────
 
   addShortcut(
     Key.ctrlShift('h'),
@@ -192,9 +180,7 @@ export default function extension(pi: ExtensionAPI) {
     },
   )
 
-  // ─── Events ─────────────────────────────────────────────────────────────────
-
-  // Sync thinking level when changed externally (e.g. via /thinking command)
+  // sync when changed externally (e.g. via /thinking command)
   pi.on('thinking_level_select', async () => {
     currentThinkingLevel = currentPiThinkingLevel()
     requestRender()
@@ -207,7 +193,7 @@ export default function extension(pi: ExtensionAPI) {
   pi.on('session_start', async (_event, ctx) => {
     renderCallbacks = []
     currentThinkingLevel = currentPiThinkingLevel()
-    refreshSessionCost(ctx)
+    recalculateSessionCost(ctx)
     agentRunning = false
 
     requestGitRefresh(ctx.cwd)
@@ -218,7 +204,6 @@ export default function extension(pi: ExtensionAPI) {
     setTitle = (title: string) => ctx.ui.setTitle(title)
     setTimeout(() => updateTabTitle(), 0)
 
-    // Footer bar
     ctx.ui.setFooter((tui, theme, footerData) => {
       const footerRender = () => tui.requestRender()
       renderCallbacks.push(footerRender)
@@ -241,18 +226,19 @@ export default function extension(pi: ExtensionAPI) {
           const modelStr = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : '—'
           const modelSegment = theme.fg('dim', modelStr)
 
-          const tLevel = currentThinkingLevel
-          const thinkSegment = theme.fg('dim', 'think:') + theme.fg(thinkColor(tLevel), tLevel)
+          const thinkSegment =
+            theme.fg('dim', 'think:') +
+            theme.fg(thinkingColor(currentThinkingLevel), currentThinkingLevel)
 
           const usage = ctx.getContextUsage()
           let ctxSegment: string
           if (usage?.tokens != null && usage.contextWindow > 0) {
             const pct = Math.round(usage.percent ?? (usage.tokens * 100) / usage.contextWindow)
-            const color = pctColor(pct)
+            const color = percentColor(pct)
             ctxSegment =
               theme.fg('dim', 'ctx') +
               ' [' +
-              theme.fg(color, miniBar(pct)) +
+              theme.fg(color, progressBar(pct)) +
               '] ' +
               theme.fg(color, `${pct}%`) +
               ' ' +
@@ -261,7 +247,6 @@ export default function extension(pi: ExtensionAPI) {
             ctxSegment = theme.fg('dim', 'ctx —')
           }
 
-          // Only show cost when it's non-zero (shows clean "—" when no cost)
           let costSegment: string
           if (totalCost > 0) {
             const costStr = totalCost.toFixed(3)
@@ -270,14 +255,13 @@ export default function extension(pi: ExtensionAPI) {
             costSegment = theme.fg('dim', '$—')
           }
 
-          // Agent running indicator
           const runningIndicator = agentRunning ? ` ${theme.fg('accent', '●')}` : ''
 
           let gitSegment = ''
           let diffSegment = ''
           const branch = footerData.getGitBranch()
           if (branch) {
-            // Sync indicator: ≡ up-to-date, ↑N ahead, ↓N behind, ↕ diverged
+            // ≡ up-to-date, ↑N ahead, ↓N behind, ↕ diverged
             let sync = ''
             if (gitState) {
               const { ahead, behind } = gitState
@@ -305,22 +289,20 @@ export default function extension(pi: ExtensionAPI) {
             }
           }
 
-          // Extension statuses from other extensions — sorted alphabetically by key
           const statusEntries = [...footerData.getExtensionStatuses().entries()]
             .filter(([, v]) => v)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([, v]) => v)
-          const statusesSegment = statusEntries.join(' · ')
+          const extStatusSegment = statusEntries.join(' · ')
 
           let left = ` ${dirSegment}${runningIndicator}${sep}${modelSegment}${sep}${thinkSegment}${sep}${ctxSegment}${sep}${costSegment}`
           if (gitSegment) left += `${sep}${gitSegment}`
           if (diffSegment) left += `${sep}${diffSegment}`
 
-          const right = statusesSegment ? ` ${statusesSegment} ` : ''
+          const right = extStatusSegment ? ` ${extStatusSegment} ` : ''
           const pad = Math.max(1, width - visibleWidth(left) - visibleWidth(right))
           const statusLine = truncateToWidth(left + ' '.repeat(pad) + right, width)
 
-          // Hints line rendered below the status bar
           const dot = theme.fg('dim', '  ·  ')
           const h = shortcutHints.map(({ display, label }) => rawKeyHint(display, label)).join(dot)
           const hintsLine = h ? ` ${h}` : ''
@@ -338,19 +320,18 @@ export default function extension(pi: ExtensionAPI) {
 
   pi.on('agent_end', async (_event, ctx) => {
     agentRunning = false
-    refreshSessionCost(ctx)
+    recalculateSessionCost(ctx)
     requestGitRefresh(ctx.cwd)
     requestRender()
   })
 
   pi.on('message_end', async (event, ctx) => {
     if (event.message.role === 'assistant' && event.message.usage?.cost?.total != null) {
-      refreshSessionCost(ctx)
+      recalculateSessionCost(ctx)
       requestRender()
     }
   })
 
-  // Re-apply tab title when session info changes (pi restores default title)
   pi.on('session_info_changed', async (event) => {
     sessionName = event.name ?? ''
     updateTabTitle()
@@ -362,7 +343,6 @@ export default function extension(pi: ExtensionAPI) {
     queuedGitCwd = undefined
     renderCallbacks = []
 
-    // Reset tab title on shutdown
     process.stdout.write('\x1b]0;\x07')
   })
 }
