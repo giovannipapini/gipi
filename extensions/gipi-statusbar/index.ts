@@ -1,19 +1,6 @@
 /**
- * gipi-statusbar extension — replaces the built-in pi footer with a richer status line
- * and sets the terminal tab/window title via Kitty/Ghostty/iTerm2 OSC protocol.
- *
- * Tab title format:
- *   pi-agent #<full session id>
- *
- * Status bar layout:
- *   ~/project │ model │ think:high │ ctx [▓▓▓░░░░░] 42% (85k/200k) │ $— │ branch ~2 ?1 ↑1 │ +10/-5
- *                                               [extension statuses on the right]
- *
- * Hints row below the status bar shows key bindings at a glance.
- * Git state is refreshed at session start and after each agent turn.
- *
- * Shortcuts registered here:
- *   Ctrl+Shift+H — invoke /hotkeys
+ * gipi-statusbar extension — replaces the built-in pi footer with a richer status line.
+ * Extension statuses are sorted alphabetically on the right side.
  */
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
@@ -195,10 +182,6 @@ export default function extension(pi: ExtensionAPI) {
 
   // ─── Shortcuts ──────────────────────────────────────────────────────────────
 
-  // External shortcuts from other extensions (gipi-safety)
-  shortcutHints.push({ display: 'ctrl+shift+e', label: 'confirm' })
-  shortcutHints.push({ display: 'ctrl+shift+w', label: 'writes' })
-
   addShortcut(
     Key.ctrlShift('h'),
     'ctrl+shift+h',
@@ -322,9 +305,12 @@ export default function extension(pi: ExtensionAPI) {
             }
           }
 
-          // Extension statuses from other extensions
-          const statuses = [...footerData.getExtensionStatuses().values()].filter(Boolean)
-          const statusesSegment = statuses.join(' · ')
+          // Extension statuses from other extensions — sorted alphabetically by key
+          const statusEntries = [...footerData.getExtensionStatuses().entries()]
+            .filter(([, v]) => v)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([, v]) => v)
+          const statusesSegment = statusEntries.join(' · ')
 
           let left = ` ${dirSegment}${runningIndicator}${sep}${modelSegment}${sep}${thinkSegment}${sep}${ctxSegment}${sep}${costSegment}`
           if (gitSegment) left += `${sep}${gitSegment}`
@@ -336,7 +322,8 @@ export default function extension(pi: ExtensionAPI) {
 
           // Hints line rendered below the status bar
           const dot = theme.fg('dim', '  ·  ')
-          const hintsLine = ` ${shortcutHints.map(({ display, label }) => rawKeyHint(display, label)).join(dot)}`
+          const h = shortcutHints.map(({ display, label }) => rawKeyHint(display, label)).join(dot)
+          const hintsLine = h ? ` ${h}` : ''
 
           return [statusLine, '', hintsLine]
         },
