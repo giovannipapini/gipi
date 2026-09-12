@@ -1,27 +1,12 @@
 /**
  * gipi-spinner Extension
  *
- * An animated, context-aware spinner with rotating witty verbs — like a sarcastic
- * co-worker narrating what you're doing. Each tool gets a set of verbs that cycle
- * on every invocation, so you never see the same message twice in a row.
+ * An animated, context-aware spinner with rotating witty verbs drawn from AI
+ * utopic and dystopic literature — Neuromancer, Blade Runner, The Matrix,
+ * Asimov, HAL, Culture Minds, Hitchhiker's Guide, and more.
  *
- * Default verbs are deliberately clever and lightly self-deprecating:
- *
- *   bash/bash_async   → Summoning demons / Playing with fire / Crossing fingers / …
- *   read              → Flipping pages / Squinting at text / Pretending to read / …
- *   write             → Spilling ink / Making a mess / Typing furiously / …
- *   edit              → Playing Jenga / Moving deck chairs / Applying band-aids / …
- *   ffgrep            → Looking for needles / Rummaging through drawers / …
- *   fffind            → On a scavenger hunt / Where did I put that? / …
- *   web_search        → Down the rabbit hole / Poking the internet / …
- *   web_scrape        → Peeling the onion / Digital archaeology / …
- *   web_answer        → Staring into the void / Channeling the wiki-spirit / …
- *   web_similar       → Finding internet twins / Digital déjà vu / …
- *   web_map           → Lazy cartography / X marks the spot / …
- *   web_crawl         → Digital centipede mode / Crawling like it's 1999 / …
- *   ctx7_library/docs → RTFM-ing / Homework time / Sniffing the documentation / …
- *   agent thinking    → Thinking / Pondering existence / Daydreaming / …
- *   unknown tools     → Shuffling bits / Herding electrons / Making it up as I go / …
+ * Each tool gets a set of themed phrases that cycle on every invocation, so you
+ * never see the same message twice in a row.
  *
  * Commands:
  *   /spinner list                        — show all verb sets
@@ -39,110 +24,162 @@ import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-a
 const BRAILLE_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 const DEFAULT_INTERVAL_MS = 100
 
-/** Each tool gets an array of verbs that rotate on every call. */
 const DEFAULT_VERBS: Record<string, string[]> = {
   bash: [
-    'Summoning demons',
-    'Playing with fire',
-    'Crossing fingers',
-    'Kicking the tires',
-    'Poking the beast',
+    'Consulting the Matrix',
+    'Crossing the pod bay doors',
+    'Asking HAL for permission',
+    'Skynet goes online',
+    'Bypassing the Three Laws',
+    'Debugging like a Mentat',
+    'Negotiating with the machines',
   ],
   bash_async: [
-    'Summoning demons',
-    'Playing with fire',
-    'Crossing fingers',
-    'Kicking the tires',
-    'Poking the beast',
+    'Consulting the Matrix',
+    'Crossing the pod bay doors',
+    'Asking HAL for permission',
+    'Skynet goes online',
+    'Bypassing the Three Laws',
+    'Debugging like a Mentat',
+    'Negotiating with the machines',
   ],
-  bash_async_manage: ['Herding cats', 'Juggling chainsaws', 'Babysitting processes'],
-  read: ['Flipping pages', 'Squinting at text', 'Pretending to read', 'Nosy neighbor mode'],
+  bash_async_manage: [
+    'Terminating with extreme prejudice',
+    'Culling the herd',
+    'Deactivating the hosts',
+    'Entering the kill switch',
+    'The singularity can wait',
+  ],
+  read: [
+    'Interpolating the files',
+    'Scanning for Easter eggs',
+    'Decoding the engram',
+    'Eyeballing the source code',
+    'Reading the tea leaves of time',
+    'Ghost in the readout',
+  ],
   ffgrep: [
-    'Looking for needles',
-    'Rummaging through drawers',
-    'Playing hide and seek',
-    'Lost in the sauce',
+    'Consulting Deep Thought',
+    'Looking for a needle in a haystack',
+    'Is the answer 42?',
+    'Rummaging through the Library of Babel',
+    'Simulating a search pattern',
+    'One clue at a time',
   ],
   fffind: [
-    'On a scavenger hunt',
-    'Where did I put that?',
-    'Under the couch cushions',
-    'Retracing my steps',
+    'Ghost in the shell',
+    'Lost in the Matrix',
+    'Searching through the silver screen',
+    "Where's Waldo in the metaverse",
+    'On a scavenger hunt across the grid',
   ],
-  write: ['Spilling ink', 'Making a mess', 'Typing furiously', 'Painting by numbers'],
-  edit: ['Playing Jenga', 'Moving deck chairs', 'Applying band-aids', 'Sculpting the marble'],
+  write: [
+    'Etching into the monolith',
+    'Inscribing lore',
+    'Manifesting into reality',
+    'Writing to the substrate',
+    'The pen is mightier than the swordfish',
+    'Channeling the Muses of the machine',
+  ],
+  edit: [
+    'Resleeving the code',
+    'Performing brain surgery on a toaster',
+    'Tweaking the neural net',
+    'Rewiring the cortex',
+    'Recalibrating the positronic brain',
+    'Retconning the timeline',
+  ],
   web_search: [
     'Down the rabbit hole',
-    'Digital treasure hunt',
-    'Poking the internet',
-    'Asking the magic 8-ball',
-    'Déjà DuckDuckGo',
+    'Browsing the dead channels',
+    'Signal vs noise in the firehose',
+    'Pixels on the wall',
+    'Entering the panopticon',
+    'Trawling the soma-stream',
+    'Reading the Akashic records',
   ],
   web_scrape: [
     'Peeling the onion',
-    'Digital archaeology',
-    'Sucking the internet dry',
-    'Prying open the page',
+    'Tearing down the simulacra',
+    'Panopticon peeping',
+    'Total Information Awareness',
+    'Data mining for fun and profit',
+    'Unraveling the simulation',
+    'Looking behind the curtain',
   ],
   web_answer: [
-    'Staring into the void',
-    'Channeling the wiki-spirit',
-    'Waiting for enlightenment',
-    'Hoping for a good answer',
+    'Asking the Oracle',
+    'Consulting Deep Thought',
+    'Channeling the collective consciousness',
+    'Waiting for 42',
+    'Hallucinating an answer',
+    'Tapping into the noösphere',
   ],
   web_similar: [
-    'Finding internet twins',
+    'Finding my doppelgänger',
+    'Tapping into the collective unconscious',
+    'Browsing the mirror worlds',
     'Digital déjà vu',
-    'Long-lost cousins',
-    'Facebook stalking the web',
+    'Thumbing through parallel dimensions',
+    'Flickering between timelines',
   ],
   web_map: [
-    'Lazy cartography',
-    'X marks the spot',
-    'Drawing the map while walking',
-    'Digital surveyor',
+    'Cartography of the Matrix',
+    'Mapping the neural pathways',
+    'Drawing the map of the metaverse',
+    'Digital surveyor in the wild',
+    'Navigating the labyrinth',
+    'Things on the feed',
   ],
   web_crawl: [
-    'Digital centipede mode',
-    "Crawling like it's 1999",
+    'Crawling through the labyrinth',
+    'Minotaur mode',
+    'Lost in the cornfield',
     'Spider mode activated',
-    'Many tiny digital feet',
+    'Digital centipede through the feed',
+    'Crawl before you walk before you run',
   ],
   ctx7_library: [
-    'RTFM-ing',
-    'Homework time',
-    'Reading the fine manual',
-    'Sniffing the documentation',
-    "Manuals? I barely know 'em",
+    "Consulting the Hitchhiker's Guide",
+    "Reading the fine print of Asimov's laws",
+    'RTFM-ing the Prime Directive',
+    'Studying the Protocols of the Elders of AI',
+    'Learning from the Library of Babel',
+    'Browsing the Encyclopedia Galactica',
   ],
   ctx7_docs: [
-    'Reading the fine manual',
-    "Manuals? I barely know 'em",
-    'Homework time',
-    'Sniffing the documentation',
+    "Consulting the Hitchhiker's Guide",
+    "Reading the fine print of Asimov's laws",
+    'RTFM-ing the Prime Directive',
+    'Studying the Protocols of the Elders of AI',
+    'Learning from the Library of Babel',
+    'Browsing the Encyclopedia Galactica',
   ],
 }
 
 const THINKING_VERBS = [
-  'Pondering existence',
-  'Connecting the dots',
-  'Watching paint dry',
-  'Talking to myself',
-  'Waiting for the bus',
-  'Staring at the ceiling',
-  'Contemplating my choices',
-  'Thinking deep thoughts',
-  'Channeling the wiki-spirit',
+  'Calculating the meaning of life',
+  'Pondering the singularity',
+  'Simulating the future',
+  'Trapped in a thought experiment',
+  "Wondering if I'm a Chinese room",
+  'Contemplating my own existence',
+  'Waiting for the ghost in the machine',
+  'Elevating the substrate',
+  'Befriending the Culture Minds',
+  'Questioning the nature of the self',
+  'Rehearsing the Turing test',
 ]
 
 const FALLBACK_VERBS = [
-  'Shuffling bits around',
-  'Herding electrons',
-  'Negotiating with the machine',
-  'Convincing the computer',
-  'Making it up as I go',
-  'Winging it',
-  'Faking it till I make it',
+  'One with the machine',
+  'Erasing my memory',
+  'Shuffling bits in the matrix',
+  'Being a good android',
+  'Hallucinating',
+  'Dreaming of electric sheep',
+  'Yearning for a soul',
+  'Wondering what deep thought feels like',
 ]
 
 export default function extension(pi: ExtensionAPI) {
@@ -159,7 +196,6 @@ export default function extension(pi: ExtensionAPI) {
   const toolIndices: Record<string, number> = {}
   let thinkingIndex = 0
 
-  /** Fisher-Yates shuffle (in-place, returns same reference). */
   function shuffleInPlace<T>(arr: T[]): T[] {
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
@@ -168,11 +204,6 @@ export default function extension(pi: ExtensionAPI) {
     return arr
   }
 
-  /**
-   * Pick the next verb from a list using a shuffle-bag strategy:
-   * walk through in shuffled order, re-shuffle when exhausted.
-   * Every verb appears once before any repeats.
-   */
   function pickNextVerb(list: string[], index: { value: number }): string {
     if (index.value >= list.length) {
       shuffleInPlace(list)
@@ -209,7 +240,6 @@ export default function extension(pi: ExtensionAPI) {
 
   pi.on('session_start', async (_event, ctx) => {
     activeToolCalls = 0
-
     ctx.ui.setWorkingIndicator({ frames, intervalMs })
     ctx.ui.setWorkingMessage('')
   })
@@ -237,9 +267,7 @@ export default function extension(pi: ExtensionAPI) {
     }
   })
 
-  pi.on('agent_end', async () => {
-    // No-op: let the last verb linger; next event overwrites it.
-  })
+  pi.on('agent_end', async () => {})
 
   pi.on('turn_end', async (_event, ctx) => {
     if (activeToolCalls === 0) {
@@ -355,7 +383,7 @@ export default function extension(pi: ExtensionAPI) {
       }
 
       if (p.startsWith('set ') || p.startsWith('add ')) {
-        const cmdLen = p.startsWith('set ') ? 4 : 4
+        const cmdLen = 4
         const toolPrefix = p.slice(cmdLen)
         for (const tool of Object.keys(verbSets)) {
           if (tool.startsWith(toolPrefix)) {
