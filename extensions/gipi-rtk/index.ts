@@ -160,10 +160,10 @@ function shouldSkipProxy(command: string): boolean {
 }
 
 /** Run rtk discover and return the text output. */
-function runDiscover(project?: string): string {
-  const args = project ? `-p "${project.replace(/"/g, '\\"')}"` : ''
+function discoverMissedSavings(projectArg?: string): string {
+  const discoverArgs = projectArg ? `-p "${projectArg.replace(/"/g, '\\"')}"` : ''
   try {
-    const out = execSync(`rtk discover ${args}`, {
+    const out = execSync(`rtk discover ${discoverArgs}`, {
       encoding: 'utf-8',
       timeout: 15_000,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -266,9 +266,9 @@ export default function extension(pi: ExtensionAPI) {
       }
 
       ctx.ui.notify('Scanning for missed savings...', 'info')
-      const result = runDiscover()
+      const discoverOutput = discoverMissedSavings()
       ctx.ui.setEditorText(
-        `╭─ rtk discover ─────────────────────────────\n│\n${result}\n│\n╰────────────────────────────────────────────`,
+        `╭─ rtk discover ─────────────────────────────\n│\n${discoverOutput}\n│\n╰────────────────────────────────────────────`,
       )
     },
   })

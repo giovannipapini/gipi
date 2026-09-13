@@ -3,7 +3,7 @@
  *
  * Two tools: `bash_async` spawns a long-running shell command and returns
  * immediately; `bash_async_manage` reads stdout/stderr, kills, or lists jobs
- * started by it. Inspired by Claude Code's run_in_background.
+ * started by it.
  *
  * A `/jobs` command opens an interactive TUI manager for the user to browse,
  * live-tail, and kill background jobs without spending an agent turn.
@@ -286,7 +286,7 @@ export default function extension(pi: ExtensionAPI) {
           return raw.split('\n').map((l) => `  ${truncateToWidth(l, width - 2)}`)
         }
 
-        function handleInput(data: string) {
+        function dispatchKeyboardInput(data: string) {
           const all = jobs()
           if (matchesKey(data, Key.escape) || data === 'q') {
             finish()
@@ -362,7 +362,7 @@ export default function extension(pi: ExtensionAPI) {
           return lines
         }
 
-        return { render, invalidate: () => {}, handleInput }
+        return { render, invalidate: () => {}, handleInput: dispatchKeyboardInput }
       })
     },
   })

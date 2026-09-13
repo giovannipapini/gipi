@@ -94,7 +94,7 @@ async function request(
   }
 
   if (!res.ok) {
-    const o = asObj(json)
+    const o = ensureObject(json)
     const detail =
       asStr(o.error || o.message || o.detail) || body.slice(0, 400) || res.statusText || 'no body'
     throw new Error(`${shortUrl(url)} → HTTP ${res.status}: ${detail}`)
@@ -108,7 +108,7 @@ async function request(
     )
   }
 
-  return { data: asObj(json), status: res.status }
+  return { data: ensureObject(json), status: res.status }
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ export async function pollGet<T>(
 // ── Tiny helpers (self-contained, no Zod dependency) ───────────────────────
 
 const asStr = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
-const asObj = (v: unknown): Record<string, unknown> =>
+const ensureObject = (v: unknown): Record<string, unknown> =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
 
 function errMsg(e: unknown): string {

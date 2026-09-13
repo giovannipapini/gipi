@@ -34,9 +34,9 @@ export function loadJobs(sessionId: string): Job[] {
 export function saveJobs(sessionId: string, jobs: Job[]): void {
   ensureSessionDir(sessionId)
   const path = jobsFile(sessionId)
-  const tmp = `${path}.${process.pid}.${Date.now()}.tmp`
-  writeFileSync(tmp, JSON.stringify(jobs), 'utf8')
-  renameSync(tmp, path)
+  const tempJobsFilePath = `${path}.${process.pid}.${Date.now()}.tmp`
+  writeFileSync(tempJobsFilePath, JSON.stringify(jobs), 'utf8')
+  renameSync(tempJobsFilePath, path)
 }
 
 export function purgeSessionDir(sessionId: string): void {

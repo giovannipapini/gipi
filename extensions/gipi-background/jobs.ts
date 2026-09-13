@@ -213,7 +213,7 @@ export function createRegistry(sessionId: string, onChange: () => void): JobRegi
   }
 }
 
-export interface ReadResult {
+export interface LogReadTailResult {
   content: string
   bytesRead: number
   bytesSkipped: number
@@ -227,39 +227,45 @@ export interface ReadResult {
 // surface a "missed N bytes" warning.
 export function readLogTail(
   path: string,
-  fromOffset: number,
+  fromByteOffset: number,
   tailBytes: number,
   sinceLastRead: boolean,
-): ReadResult {
+): LogReadTailResult {
   if (!existsSync(path))
-    return { content: '', bytesRead: 0, bytesSkipped: 0, newOffset: fromOffset, fileSize: 0 }
+    return { content: '', bytesRead: 0, bytesSkipped: 0, newOffset: fromByteOffset, fileSize: 0 }
   const fd = openSync(path, 'r')
   try {
-    const size = statSync(path).size
+    const fileSizeBytes = statSync(path).size
     let start: number
     let bytesSkipped = 0
     if (sinceLastRead) {
-      const from = Math.min(fromOffset, size)
-      if (size - from > tailBytes) {
-        start = size - tailBytes
+      const from = Math.min(fromByteOffset, fileSizeBytes)
+      if (fileSizeBytes - from > tailBytes) {
+        start = fileSizeBytes - tailBytes
         bytesSkipped = start - from
       } else {
         start = from
       }
     } else {
-      start = Math.max(0, size - tailBytes)
+      start = Math.max(0, fileSizeBytes - tailBytes)
     }
-    const length = size - start
+    const length = fileSizeBytes - start
     if (length <= 0)
-      return { content: '', bytesRead: 0, bytesSkipped, newOffset: size, fileSize: size }
-    const buf = Buffer.alloc(length)
-    const actual = readSync(fd, buf, 0, length, start)
+      return {
+        content: '',
+        bytesRead: 0,
+        bytesSkipped,
+        newOffset: fileSizeBytes,
+        fileSize: fileSizeBytes,
+      }
+    const buffer = Buffer.alloc(length)
+    const actual = readSync(fd, buffer, 0, length, start)
     return {
-      content: buf.toString('utf8', 0, actual),
+      content: buffer.toString('utf8', 0, actual),
       bytesRead: actual,
       bytesSkipped,
-      newOffset: size,
-      fileSize: size,
+      newOffset: fileSizeBytes,
+      fileSize: fileSizeBytes,
     }
   } finally {
     closeSync(fd)

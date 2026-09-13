@@ -69,7 +69,6 @@ const MACOS_PHRASES = [
   'sysctl -n',
 ] as const
 
-// GitLab CLI read-only subcommands
 const GLAB_PHRASES = [
   'glab mr list',
   'glab mr view',

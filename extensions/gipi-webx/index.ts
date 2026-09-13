@@ -62,7 +62,7 @@ function fcHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${key}` }
 }
 
-function exaResult(raw: unknown): ExaWebResult {
+function normalizeExaResult(raw: unknown): ExaWebResult {
   const r = safeParse(ExaResultSchema, raw, {})
   const highlights = (r.highlights ?? []).filter(Boolean)
   return {
@@ -193,7 +193,7 @@ function registerWebSearch(pi: ExtensionAPI) {
           signal,
         )
         const parsed = safeParse(ExaSearchResponse, data, { results: [] })
-        return textResult(`${paramHeader}\n\n${fmtResults(parsed.results.map(exaResult))}`)
+        return textResult(`${paramHeader}\n\n${fmtResults(parsed.results.map(normalizeExaResult))}`)
       }
 
       const { data } = await jsonPost(
@@ -275,7 +275,7 @@ function registerWebSimilar(pi: ExtensionAPI) {
         signal,
       )
       const parsed = safeParse(ExaSearchResponse, data, { results: [] })
-      return textResult(`${header}\n\n${fmtResults(parsed.results.map(exaResult))}`)
+      return textResult(`${header}\n\n${fmtResults(parsed.results.map(normalizeExaResult))}`)
     },
   })
 }

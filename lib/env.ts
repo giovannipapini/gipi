@@ -37,10 +37,10 @@ export function requireEnvKey(name: KeyName, helpUrl?: string): string {
 
 /** Validate a key's format — no-op if valid, throws if not. */
 export function validateKey(name: KeyName, key: string, helpUrl?: string): string {
-  const cfg = KEY_PATTERNS[name]
-  if (!cfg.pattern.test(key)) {
+  const keyConfig = KEY_PATTERNS[name]
+  if (!keyConfig.pattern.test(key)) {
     const url = helpUrl ?? `https://${name.toLowerCase().replace(/_/g, '.')}/dashboard`
-    throw new Error(`${name} format looks wrong — ${cfg.hint}. Check your key at ${url}`)
+    throw new Error(`${name} format looks wrong — ${keyConfig.hint}. Check your key at ${url}`)
   }
   return key
 }
@@ -48,8 +48,8 @@ export function validateKey(name: KeyName, key: string, helpUrl?: string): strin
 /** Check if a key looks present and valid (no throw, returns boolean). */
 export function isKeyValid(name: KeyName, key?: string): boolean {
   if (!key) return false
-  const cfg = KEY_PATTERNS[name]
-  return cfg.pattern.test(key)
+  const keyConfig = KEY_PATTERNS[name]
+  return keyConfig.pattern.test(key)
 }
 
 /** Read a key from process.env and return it if valid, or undefined. */
