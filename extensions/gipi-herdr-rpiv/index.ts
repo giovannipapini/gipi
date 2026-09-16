@@ -17,26 +17,30 @@
 
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 
-const RIV_PROMPT_EVENT = 'rpiv:ask-user:prompt'
-const RIV_BLOCKED_EVENT = 'rpiv:ask-user:blocked'
+const RPIV_PROMPT_EVENT = 'rpiv:ask-user:prompt'
+const RPIV_BLOCKED_EVENT = 'rpiv:ask-user:blocked'
 const HERDR_BLOCKED_EVENT = 'herdr:blocked'
 
-const MAX_QUESTION_LABEL = 60
+const MAX_QUESTION_LABEL_CHARS = 60
 const FALLBACK_LABEL = 'Waiting for your answer'
 
 interface AskUserPromptPayload {
   questions?: ReadonlyArray<{ question: string; header: string }>
 }
 
-function blockLabel(payload: unknown): string | undefined {
+interface AskUserBlockedPayload {
+  active?: boolean
+}
+
+function computeBlockedLabel(payload: unknown): string | undefined {
   const first = (payload as AskUserPromptPayload | undefined)?.questions?.[0]
   if (!first) return undefined
   const header = first.header?.trim() ?? ''
   if (header) return header
   const question = first.question.replace(/\s+/g, ' ').trim()
-  return question.length <= MAX_QUESTION_LABEL
+  return question.length <= MAX_QUESTION_LABEL_CHARS
     ? question
-    : `${question.slice(0, MAX_QUESTION_LABEL - 1)}…`
+    : `${question.slice(0, MAX_QUESTION_LABEL_CHARS - 1)}…`
 }
 
 export default function extension(pi: ExtensionAPI) {
@@ -44,13 +48,13 @@ export default function extension(pi: ExtensionAPI) {
 
   let activeLabel: string | undefined
 
-  pi.events.on(RIV_PROMPT_EVENT, (data) => {
-    const label = blockLabel(data)
-    if (label) activeLabel = label
+  pi.events.on(RPIV_PROMPT_EVENT, (payload) => {
+    activeLabel = computeBlockedLabel(payload)
   })
 
-  pi.events.on(RIV_BLOCKED_EVENT, (data) => {
-    const active = Boolean((data as { active?: boolean } | undefined)?.active)
+  pi.events.on(RPIV_BLOCKED_EVENT, (payload) => {
+    const active = Boolean((payload as AskUserBlockedPayload | undefined)?.active)
+    if (!active) activeLabel = undefined
     pi.events.emit(HERDR_BLOCKED_EVENT, {
       active,
       label: active ? (activeLabel ?? FALLBACK_LABEL) : undefined,
