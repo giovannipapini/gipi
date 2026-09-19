@@ -7,7 +7,7 @@
  * "refactor auth", "debug oom", "setup ci".
  */
 
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 import { Type } from 'typebox'
 
 export default function (pi: ExtensionAPI) {
@@ -15,7 +15,7 @@ export default function (pi: ExtensionAPI) {
   let namingAttempts = 0
   let lastNudgeMsgCount = 0
   const MAX_ATTEMPTS = 2
-  const MIN_USER_MSGS = 3
+  const MIN_USER_MSGS = 1
 
   pi.registerTool({
     name: 'name_session',
@@ -47,6 +47,41 @@ export default function (pi: ExtensionAPI) {
     if (event.name) isNamed = true
   })
 
+  pi.registerCommand('autoname', {
+    description: 'Ask the LLM to infer and set a short lowercase session name',
+    handler: async (_args, ctx) => {
+      await ctx.waitForIdle()
+      namingAttempts++
+      pi.sendUserMessage(
+        'use name_session to set a short lowercase name (1-3 words) for this session based on our conversation',
+        { deliverAs: 'followUp' },
+      )
+    },
+  })
+
+  function isSubstantive(text: string): boolean {
+    const trimmed = text.trim()
+    if (trimmed.length < 15) return false
+    // purely alpha+spaces = likely a greeting like "hi there"
+    if (/^[a-zA-Z\s]+$/.test(trimmed)) return false
+    return true
+  }
+
+  function lastUserMessage(ctx: ExtensionContext): string | undefined {
+    for (const entry of ctx.sessionManager.getBranch().toReversed()) {
+      if (entry.type === 'message' && entry.message.role === 'user') {
+        const content = entry.message.content
+        if (typeof content === 'string') return content
+        if (Array.isArray(content)) {
+          const text = content.find((c) => c.type === 'text')
+          if (text && 'text' in text) return text.text
+        }
+        return undefined
+      }
+    }
+    return undefined
+  }
+
   pi.on('agent_settled', async (_event, ctx) => {
     if (isNamed || namingAttempts >= MAX_ATTEMPTS) return
 
@@ -54,6 +89,10 @@ export default function (pi: ExtensionAPI) {
     const userCount = branch.filter((e) => e.type === 'message' && e.message.role === 'user').length
 
     if (lastNudgeMsgCount === 0 && userCount >= MIN_USER_MSGS) {
+      // skip if the last user message looks like a greeting with no substance
+      const last = lastUserMessage(ctx)
+      if (last !== undefined && !isSubstantive(last)) return
+
       lastNudgeMsgCount = userCount
       namingAttempts++
       pi.sendUserMessage(
