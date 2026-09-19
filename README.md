@@ -9,6 +9,7 @@ Custom [pi](https://pi.dev/) extensions, skills, and themes for my daily driver 
 | **gipi-background** | Long-running background job manager (tmux-style process pools) |
 | **gipi-dedup** | Deduplicates read/edit tool output to reduce noise |
 | **gipi-herdr-rpiv** | Bridges rpiv-ask-user-question dialogs into Herdr's agent lifecycle (marks pi `blocked` while you answer) |
+| **gipi-namesession** | Auto-names sessions via the LLM: short lowercase descriptive names after first few exchanges |
 | **gipi-docquery** | Query library docs via Context7 API |
 | **gipi-safety** | Interactive tool confirmation guard with plugin rules |
 | **gipi-spinner** | Animated spinner with witty verbs during tool execution |
