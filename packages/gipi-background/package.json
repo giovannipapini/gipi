@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "execa": "^10.2.0",
-    "nanoid": "^5.1.16"
+    "nanoid": "^6.0.2"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
