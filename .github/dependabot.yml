@@ -16,10 +16,16 @@ updates:
         update-types: [patch]
 
   # Pinned action SHAs go stale silently; this keeps them current through PRs
-  # that show the old and new commit in the diff.
+  # that show the old and new commit in the diff. CodeQL is its own group: every
+  # github/codeql-action step must move to the same version in one PR, or the
+  # workflow fails with "All steps ... must use the same version".
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
