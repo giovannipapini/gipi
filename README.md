@@ -1,6 +1,6 @@
 # gipi
 
-Custom [pi](https://pi.dev/) extensions, skills, and themes for my daily driver setup.
+Custom [pi](https://pi.dev/) extensions and themes for my daily driver setup.
 
 ## Extensions
 
@@ -16,12 +16,6 @@ Custom [pi](https://pi.dev/) extensions, skills, and themes for my daily driver 
 | **gipi-statusbar**     | Custom footer with git status, context usage, cost, model info                                                                          |
 | **gipi-rtk**           | RTK command proxying — proxies eligible bash commands through `rtk` for 50-90% output token savings                                     |
 | **gipi-webx**          | Web search/crawl tools backed by Exa and Firecrawl                                                                                      |
-
-## Skill
-
-| Skill          | Description                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------ |
-| **clean-code** | Reference for clean code principles — naming, functions, SOLID, code smells, simple design rules |
 
 ## Theme
 
