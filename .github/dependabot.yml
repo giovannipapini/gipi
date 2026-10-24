@@ -7,6 +7,12 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     versioning-strategy: increase
+    ignore:
+      # @types/node must track the minimum supported runtime (engines.node),
+      # not the newest Node: types from a newer major typecheck code against
+      # APIs that are absent on the runtime these packages promise to support.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: development
