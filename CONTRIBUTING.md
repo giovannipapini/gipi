@@ -6,58 +6,90 @@ Thanks for your interest in contributing to gipi!
 
 1. Fork the repository.
 2. Clone your fork.
-3. Install [Biome](https://biomejs.dev/): `brew install biome`
-4. Install [pnpm](https://pnpm.io/): `brew install pnpm`
-5. Install dependencies: `pnpm install` (provides TypeScript types for IDE support)
-6. Install [pre-commit](https://pre-commit.com/): `brew install pre-commit && pre-commit install`
+3. Install [pnpm](https://pnpm.io/): `brew install pnpm`
+4. Install dependencies: `pnpm install` — this also installs Biome and the pi types locally
+5. Install [pre-commit](https://pre-commit.com/): `brew install pre-commit && pre-commit install`
 
 ## Development
 
-All extensions live in `extensions/` as directories with an `index.ts` entry point.
-Themes live in `themes/` as JSON files.
+Every publishable unit lives in `packages/`: one directory per extension with an
+`index.ts` entry point, plus `packages/gipi-themes` for themes. Each directory is its
+own package (`@giovannipapini/gipi-<name>`), so it can be installed on its own.
 
 ```bash
-# Install dependencies (TypeScript types for IDE)
 pnpm install
-
-# Check all files
-biome check .
-
-# Auto-fix formatting + lint
-biome check --write .
+pnpm verify      # lint + typecheck + build + pack:check — run this before pushing
 ```
 
 ## Package Structure
 
-This is a [pi package](https://pi.dev/docs/packages) with a `package.json` manifest:
+Shared helpers live in `lib/` and are imported with relative specifiers
+(`../../lib/env.js`). `pnpm build` bundles each extension with esbuild into a
+single `dist/index.js`, inlining `lib/` and leaving bare imports (pi peers,
+`typebox`, `zod`, `execa`, `nanoid`) external. The manifest decides what ships:
 
 ```json
 {
-  "pi": {
-    "extensions": ["./extensions"],
-    "themes": ["./themes"]
-  }
+  "name": "@giovannipapini/gipi-rtk",
+  "files": ["dist"],
+  "pi": { "extensions": ["./dist"] },
+  "dependencies": {},
+  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" }
 }
 ```
 
-Pi discovers extensions and themes from the manifest. No manual symlinking needed —
-`pi install git:github.com/giovannipapini/gipi` loads everything.
+Rules for a new extension:
 
-### For users of this package
+- one directory under `packages/`, one `package.json`, one `index.ts` entry point
+- resource directories (`extensions/`, `themes/`) inside a package contain only
+  resources — never a `package.json`, or pi will try to load the manifest as a resource
+- only declare dependencies the extension actually imports; pi packages are peers
+- `pnpm pack:check` must pass — it fails when a tarball contains anything the
+  `files` field does not allow
+
+## Releases
+
+Releases are per package, from `main`, and gated by CI.
+
+1. Bump `version` in that one package's `package.json` (e.g. `packages/gipi-rtk`).
+2. Commit and merge to `main` through a PR (the branch ruleset requires the
+   `verify` check).
+3. Tag it: `git tag gipi-rtk@0.2.0 && git push origin gipi-rtk@0.2.0`.
+4. Approve the pending `npm` environment deployment in the Actions run.
+
+`.github/workflows/release.yml` then checks the tag against the manifest, verifies
+the tree, refuses an already-published version, publishes with
+`npm publish --provenance`, attests the tarball, and opens the GitHub release.
+
+Guardrails in place:
+
+- no npm token exists in the repo — publishing uses GitHub OIDC trusted
+  publishing, configured per package on npm (repository `giovannipapini/gipi`,
+  workflow `release.yml`, environment `npm`)
+- `prepublishOnly` in every package refuses to publish outside CI
+- tags matching `*@*` can only be created or moved by the repo admin
+- `main` only accepts merges that pass `verify`, with linear history
+- actions are pinned to commit SHAs; Dependabot updates them via reviewed PRs
+
+## Loading it into pi
+
+Whole repo (loads the extension sources, no build needed):
 
 ```bash
 pi install git:github.com/giovannipapini/gipi
 ```
 
-### For local development
+A single published extension:
 
-Register as a local package from inside the repo:
+```bash
+pi install npm:@giovannipapini/gipi-rtk
+```
+
+From a local checkout, register the repo and run `/reload` after changes:
 
 ```bash
 pi install .
 ```
-
-Then run `/reload` in pi to pick up changes.
 
 ## Pre-commit Hooks
 

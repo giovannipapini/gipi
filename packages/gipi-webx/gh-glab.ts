@@ -134,7 +134,7 @@ function cliLabel(): string {
   if (cliState.gh) parts.push('gh')
   if (cliState.glab) parts.push('glab')
   if (parts.length === 0) return 'gh glab'
-  return parts.join(' ') + ' ✓'
+  return `${parts.join(' ')} ✓`
 }
 
 // ── CLI execution (via pi.exec) ────────────────────────────────────────────

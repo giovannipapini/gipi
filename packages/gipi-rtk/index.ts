@@ -20,7 +20,7 @@
  * Placement: gipi/extensions/gipi-rtk/index.ts (discovered via pi package)
  */
 
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 import { isToolCallEventType } from '@earendil-works/pi-coding-agent'
 import { Key } from '@earendil-works/pi-tui'
@@ -125,7 +125,11 @@ function getRewrite(command: string): string | null {
   if (cached !== undefined) return cached.rewritten
 
   try {
-    const out = execSync(`rtk rewrite "${trimmed.replace(/"/g, '\\"')}"`, {
+    // execFileSync, not execSync: the command text is an argv entry, so nothing in
+    // it is re-interpreted by a shell. Interpolating it into `rtk rewrite "..."`
+    // let backticks and $(...) in the command run during the probe, and heredoc
+    // bodies broke out of the quoting and executed locally.
+    const out = execFileSync('rtk', ['rewrite', trimmed], {
       encoding: 'utf-8',
       timeout: 2000,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -161,9 +165,9 @@ function shouldSkipProxy(command: string): boolean {
 
 /** Run rtk discover and return the text output. */
 function discoverMissedSavings(projectArg?: string): string {
-  const discoverArgs = projectArg ? `-p "${projectArg.replace(/"/g, '\\"')}"` : ''
+  const discoverArgs = projectArg ? ['discover', '-p', projectArg] : ['discover']
   try {
-    const out = execSync(`rtk discover ${discoverArgs}`, {
+    const out = execFileSync('rtk', discoverArgs, {
       encoding: 'utf-8',
       timeout: 15_000,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -189,11 +193,19 @@ function updateStatus(ctx: ExtensionContext) {
 /** Apply rtk proxy: given a bash command, return the rewritten command or null. */
 function proxyCommand(command: string): string | null {
   if (!enabled || !rtkAvailable) return null
-  if (!command || !command.trim()) return null
+  if (!command?.trim()) return null
 
   const trimmed = command.trim()
 
   if (shouldSkipProxy(trimmed)) {
+    analytics.skipped++
+    return null
+  }
+
+  // Multi-line commands are heredocs or inline scripts: rtk has no rule for them,
+  // and a newline inside a shell-quoted probe once ran the tail locally as extra
+  // commands. The probe no longer uses a shell, but leave these untouched anyway.
+  if (/[\r\n]/.test(trimmed)) {
     analytics.skipped++
     return null
   }
@@ -336,7 +348,7 @@ export default function extension(pi: ExtensionAPI) {
 
   /** Intercept bash/bash_async and proxy through rtk. The command is mutated
    * in-place so the LLM never sees the prefix; cache avoids repeated rewrites. */
-  pi.on('tool_call', async (event, ctx) => {
+  pi.on('tool_call', async (event, _ctx) => {
     if (!enabled || !rtkAvailable) return
 
     // Extract command from bash or bash_async using the same pattern as gipi-safety

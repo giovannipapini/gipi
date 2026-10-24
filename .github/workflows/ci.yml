@@ -4,31 +4,77 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
+# Least privilege by default; jobs opt in to what they need.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  quality:
+  verify:
+    name: verify
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      # --ignore-scripts: nothing in this tree needs an install script, and a
+      # compromised dependency must not get code execution at install time.
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Biome check
-        uses: biomejs/setup-biome@v2
-        with:
-          version: latest
-      - run: biome check .
+      - name: Lint
+        run: pnpm lint
 
-      - name: TypeScript typecheck
+      - name: Typecheck
         run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      # Fails if a tarball ships anything the package's own "files" field does
+      # not declare — catches leaked sources, logs and stray configs pre-release.
+      - name: Pack allowlist
+        run: pnpm pack:check
+
+      - name: Reject build artefacts in git
+        run: |
+          if [ -n "$(git status --porcelain --ignored=no)" ]; then
+            echo '::error::worktree changed during verification; commit build output or ignore it'
+            git status --porcelain --ignored=no
+            exit 1
+          fi
+
+  dependency-review:
+    name: dependency-review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          allow-licenses: MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD

@@ -1,8 +1,8 @@
 {
   "name": "gipi",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "private": true,
-  "description": "Custom pi-agent extensions, skills, and themes",
+  "description": "pi extensions and themes \u2014 one publishable package per extension",
   "keywords": [
     "pi-package"
   ],
@@ -15,28 +15,21 @@
     "pnpm": ">=10"
   },
   "type": "module",
-  "files": [
-    "extensions/",
-    "lib/",
-    "skills/",
-    "themes/"
-  ],
+  "pi": {
+    "extensions": [
+      "./packages/*/index.ts"
+    ],
+    "themes": [
+      "./packages/gipi-themes/themes/*.json"
+    ]
+  },
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "pack:check": "node scripts/pack-check.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc --noEmit",
-    "preinstall": "node -e \"process.exit(process.env.CI ? 0 : 1)\" || echo '⚠️  Use pnpm install, not npm install' && false"
-  },
-  "pi": {
-    "extensions": [
-      "./extensions"
-    ],
-    "skills": [
-      "./skills"
-    ],
-    "themes": [
-      "./themes"
-    ]
+    "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm pack:check"
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",
@@ -46,19 +39,17 @@
     "typebox": "*"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.3",
     "@earendil-works/pi-agent-core": "^1.4.0",
     "@earendil-works/pi-ai": "^1.4.0",
     "@earendil-works/pi-coding-agent": "^1.4.0",
     "@earendil-works/pi-tui": "^1.4.0",
     "@types/node": "^22",
-    "@types/node-notifier": "^8.0.5",
-    "typebox": "^1.3.8",
-    "typescript": "^5.7"
-  },
-  "dependencies": {
+    "esbuild": "^0.25.10",
     "execa": "^9.6.1",
     "nanoid": "^5.1.16",
-    "node-notifier": "^10.0.1",
+    "typebox": "^1.3.8",
+    "typescript": "^5.7",
     "zod": "^4.4.3"
   }
 }

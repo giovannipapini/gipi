@@ -1,0 +1,46 @@
+{
+  "name": "@giovannipapini/gipi-background",
+  "version": "0.1.0",
+  "description": "Long-running background job manager for pi (tmux-style process pools)",
+  "keywords": [
+    "pi-package"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/giovannipapini/gipi.git",
+    "directory": "packages/gipi-background"
+  },
+  "bugs": "https://github.com/giovannipapini/gipi/issues",
+  "homepage": "https://github.com/giovannipapini/gipi/tree/main/packages/gipi-background#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist"
+    ]
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepublishOnly": "node -e \"process.env.CI === 'true' || (console.error('publish only from CI'), process.exit(1))\""
+  },
+  "dependencies": {
+    "execa": "^9.6.1",
+    "nanoid": "^5.1.16"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}

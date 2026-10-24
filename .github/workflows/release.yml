@@ -1,0 +1,155 @@
+name: Release
+
+# Tag convention: <package-dir>@<version>, e.g.
+#   gipi-rtk@0.1.0        -> packages/gipi-rtk   -> @giovannipapini/gipi-rtk
+#   gipi-themes@0.1.0     -> packages/gipi-themes
+#
+# No npm token lives in this repository. Publishing authenticates through GitHub
+# OIDC (npm trusted publishing), so the only credential is the short-lived token
+# GitHub mints for this job, and npm records provenance that ties the tarball to
+# this commit, workflow and environment.
+
+on:
+  push:
+    tags: ["*@*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NPM_CONFIG_PROVENANCE: "true"
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    # Required reviewer on the "npm" environment is the human gate: a tag alone
+    # does not publish until someone approves the run.
+    environment: npm
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # OIDC: npm trusted publishing + provenance
+      attestations: write # build provenance attestation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve package from tag
+        id: pkg
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          dir="${TAG%@*}"
+          version="${TAG##*@}"
+
+          if [ -z "$dir" ] || [ -z "$version" ] || [ "$dir" = "$TAG" ]; then
+            echo "::error::tag '$TAG' must look like <package-dir>@<version>"
+            exit 1
+          fi
+
+          if ! pkg_dir=$(node scripts/resolve-package.mjs "$dir"); then
+            echo "::error::no workspace package named '@giovannipapini/$dir'"
+            exit 1
+          fi
+
+          name=$(node -p "require('./$pkg_dir/package.json').name")
+          pkg_version=$(node -p "require('./$pkg_dir/package.json').version")
+
+          if [ "$pkg_version" != "$version" ]; then
+            echo "::error::tag says $version but $pkg_dir/package.json says $pkg_version"
+            exit 1
+          fi
+
+          {
+            echo "dir=$pkg_dir"
+            echo "name=$name"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Require the tag to be on main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$TAG is not an ancestor of main; releases come from main only"
+            exit 1
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Trusted publishing needs npm >= 11.5.1. Node 22 ships an older npm, and
+      # the CLI that talks to the registry is the one that must support OIDC.
+      - name: npm with trusted publishing support
+        run: npm install --global npm@latest
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Verify
+        run: pnpm verify
+
+      - name: Refuse to republish an existing version
+        env:
+          PKG_NAME: ${{ steps.pkg.outputs.name }}
+          PKG_VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          set -euo pipefail
+          if npm view "$PKG_NAME@$PKG_VERSION" version >/dev/null 2>&1; then
+            echo "::error::$PKG_NAME@$PKG_VERSION is already published"
+            exit 1
+          fi
+          echo "$PKG_NAME@$PKG_VERSION is not on the registry yet; publishing"
+
+      # No NODE_AUTH_TOKEN: npm exchanges the OIDC token for short-lived publish
+      # credentials. Provenance is generated and attached automatically.
+      - name: Publish
+        id: publish
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: npm publish --access public --provenance
+
+      - name: Pack tarball for attestation
+        id: pack
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: |
+          set -euo pipefail
+          tarball=$(npm pack --ignore-scripts --silent)
+          echo "tarball=$PWD/$tarball" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PKG_NAME: ${{ steps.pkg.outputs.name }}
+          PKG_VERSION: ${{ steps.pkg.outputs.version }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" "$TARBALL" \
+            --verify-tag \
+            --title "$PKG_NAME@$PKG_VERSION" \
+            --notes "Published to npm as \`$PKG_NAME@$PKG_VERSION\`.
+
+          Install: \`pi install npm:$PKG_NAME\`
+
+          The tarball attached here is the exact file published. Its build provenance attestation links it to this workflow run and commit — verify with \`gh attestation verify <file> --repo \${{ github.repository }}\`."

@@ -1,0 +1,40 @@
+{
+  "name": "@giovannipapini/gipi-safety",
+  "version": "0.1.0",
+  "description": "Interactive tool confirmation guard with plugin rules and substitutions",
+  "keywords": [
+    "pi-package"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/giovannipapini/gipi.git",
+    "directory": "packages/gipi-safety"
+  },
+  "bugs": "https://github.com/giovannipapini/gipi/issues",
+  "homepage": "https://github.com/giovannipapini/gipi/tree/main/packages/gipi-safety#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist"
+    ]
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepublishOnly": "node -e \"process.env.CI === 'true' || (console.error('publish only from CI'), process.exit(1))\""
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  }
+}

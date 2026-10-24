@@ -1,3 +1,7 @@
+# Publishable packages: one per extension, plus the theme bundle.
+packages:
+  - "packages/*"
+
 # ── pnpm workspace & supply-chain security ──────────────────────────
 # Sources:
 #   lirantal/npm-security-best-practices — https://github.com/lirantal/npm-security-best-practices

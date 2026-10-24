@@ -6,14 +6,14 @@ dependency management practices for the **gipi** project — a
 
 Practices below are sourced from the following authoritative references:
 
-| Source | Focus |
-|---|---|
-| [OWASP NPM Security Cheat Sheet][owasp] | npm-specific hardening |
-| [OpenJS Foundation Security WG — Secure Releases Guide 2.0][openjs] | MFA, tokens, permissions |
-| [OSSF Best Practices for Open Source Developers — npm Guide][ossf] | supply chain, lockfiles, CI |
-| [lirantal/npm-security-best-practices][lirantal] | pnpm/npm hardening, cooldown |
-| [Node.js Security Best Practices][nodejs] | runtime threats, 3rd-party modules |
-| [npm Docs — Threats & Mitigations][npm-docs] | registry threats, provenance |
+| Source                                                              | Focus                              |
+| ------------------------------------------------------------------- | ---------------------------------- |
+| [OWASP NPM Security Cheat Sheet][owasp]                             | npm-specific hardening             |
+| [OpenJS Foundation Security WG — Secure Releases Guide 2.0][openjs] | MFA, tokens, permissions           |
+| [OSSF Best Practices for Open Source Developers — npm Guide][ossf]  | supply chain, lockfiles, CI        |
+| [lirantal/npm-security-best-practices][lirantal]                    | pnpm/npm hardening, cooldown       |
+| [Node.js Security Best Practices][nodejs]                           | runtime threats, 3rd-party modules |
+| [npm Docs — Threats & Mitigations][npm-docs]                        | registry threats, provenance       |
 
 [owasp]: https://cheatsheetseries.owasp.org/cheatsheets/NPM_Security_Cheat_Sheet.html
 [openjs]: https://github.com/openjs-foundation/security-collab-space/blob/main/docs/npm-security-best-practices.md
@@ -56,10 +56,10 @@ trustPolicy: no-downgrade
 
 ### Exceptions documented in this repo
 
-| Setting | Reason | Risk accepted |
-|---|---|---|
+| Setting                 | Reason                                           | Risk accepted                                                                   |
+| ----------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------- |
 | `shamefully-hoist=true` | Required for TypeScript to resolve pi core types | Reduces node_modules isolation; no runtime impact since pi bundles its own core |
-| `ignore-scripts=true` | Blocks `postinstall` on third-party deps | Pi extensions have no install scripts; safe |
+| `ignore-scripts=true`   | Blocks `postinstall` on third-party deps         | Pi extensions have no install scripts; safe                                     |
 
 ---
 
@@ -120,59 +120,66 @@ If you discover a vulnerability in this project or its dependencies:
 
 ## 4. Account & Token Security (Maintainer)
 
-| Practice | Authority |
-|---|---|
-| Enable MFA with **passkeys** (FIDO2/WebAuthN) on npm account | [OpenJS §User Accounts][openjs] |
+| Practice                                                                           | Authority                       |
+| ---------------------------------------------------------------------------------- | ------------------------------- |
+| Enable MFA with **passkeys** (FIDO2/WebAuthN) on npm account                       | [OpenJS §User Accounts][openjs] |
 | Prefer **physical security keys** (Yubikey, Apple Secure Enclave) over SMS or TOTP | [OpenJS §User Accounts][openjs] |
-| Store MFA recovery codes **offline** (printed paper or air-gapped USB drive) | [OpenJS §User Accounts][openjs] |
-| Use **Granular Access Tokens**, one per package, with expiration ≤ 2 years | [OpenJS §Access Tokens][openjs] |
-| Never store tokens in plaintext — use secret managers or 1Password CLI | [OpenJS §Access Tokens][openjs] |
-| Track custom email domain expiration dates (if applicable) | [OpenJS §User Accounts][openjs] |
+| Store MFA recovery codes **offline** (printed paper or air-gapped USB drive)       | [OpenJS §User Accounts][openjs] |
+| Use **Granular Access Tokens**, one per package, with expiration ≤ 2 years         | [OpenJS §Access Tokens][openjs] |
+| Never store tokens in plaintext — use secret managers or 1Password CLI             | [OpenJS §Access Tokens][openjs] |
+| Track custom email domain expiration dates (if applicable)                         | [OpenJS §User Accounts][openjs] |
 
 ---
 
 ## 5. Publishing Security
 
-> **This package is `"private": true`** and is NOT published to the npm
-> registry. It is installed locally via `pi install ./gipi` or
-> `pi install git:github.com/giovannipapini/gipi`.
->
-> The following rules apply if the package is ever published.
+> Eleven packages are published from this repo, one per extension plus
+> `@giovannipapini/gipi-themes`. Nothing is published by hand: a `<package>@<version>`
+> tag drives `.github/workflows/release.yml`, which verifies the tree, publishes that one
+> package, attests the tarball and opens the release.
 
 ### 5.1 Allowlist with `files`
 
-The `"files"` field in `package.json` acts as an **allowlist** — only
-these directories are included in the npm tarball:
+The `"files"` field in each package's `package.json` is the allowlist — only the
+built extension (or the theme JSON) ships:
 
 ```json
-"files": ["extensions/", "themes/"]
+"files": ["dist"]
 ```
 
-This prevents accidental inclusion of secrets, `.env` files, or sensitive
-configuration. [OWASP §1][owasp]
+`pnpm pack:check` (run by CI and before publishing) fails when a tarball contains
+anything the package's own `files` field does not allow, which is what stops
+sources, logs and stray configs from reaching a release. [OWASP §1][owasp]
 
-### 5.2 Pre-publish check
+### 5.2 No long-lived npm credentials
 
-Always dry-run before publishing:
+Publishing authenticates with **npm trusted publishing**: GitHub mints an OIDC
+token for the `release` job in the `npm` environment and npm exchanges it for
+short-lived credentials. There is no `NPM_TOKEN` secret to steal, rotate or leak,
+and the workflow cannot publish from a fork or an unreviewed branch. The `npm`
+environment requires a human reviewer, so a tag pushes a pending deployment, not
+a release.
+
+### 5.3 Provenance and verification
+
+Every package is published with `--provenance`, binding the tarball to this repo,
+the workflow, the commit and the environment. The same tarball is attached to the
+GitHub release with a [build provenance attestation][attest]. Verify with:
 
 ```bash
-pnpm publish --dry-run
+gh attestation verify <tarball> --repo giovannipapini/gipi
+npm audit signatures
 ```
 
-Review the output for any unexpected files. [OWASP §1][owasp], [Node.js §CWE-552][nodejs]
-
-### 5.3 Provenance attestations
-
-If the package is published from GitHub Actions, enable npm provenance:
-
-```yaml
-# .github/workflows/publish.yml
-permissions:
-  id-token: write   # required for provenance
-```
-
-This binds the published package to its source commit and CI run.
 [npm docs: Provenance](https://docs.npmjs.com/generating-provenance-statements/)
+
+### 5.4 Release gate
+
+- tags matching `*@*` can only be created, moved or deleted by the repo admin
+- `release.yml` refuses to publish when the tag disagrees with the manifest, when
+  the tag is not an ancestor of `main`, or when the version already exists
+- every package's `prepublishOnly` exits non-zero outside CI, so a stray local
+  `npm publish` is impossible
 
 ---
 
@@ -190,8 +197,8 @@ This binds the published package to its source commit and CI run.
 
 ## 7. Known Trade-offs
 
-| Decision | Rationale | Risk |
-|---|---|---|
-| `shamefully-hoist=true` | pi core types must be resolvable by TypeScript | node_modules isolation reduced; offset by small, audited dep tree |
-| `ignore-scripts=true` | Blocks arbitrary code execution on install | pi's own build scripts (none exist) won't run; project is `.ts` source only |
-| Private package | Not published to npm; distributed via git | No npm-side protection; rely on git and code review |
+| Decision                | Rationale                                      | Risk                                                                        |
+| ----------------------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `shamefully-hoist=true` | pi core types must be resolvable by TypeScript | node_modules isolation reduced; offset by small, audited dep tree           |
+| `ignore-scripts=true`   | Blocks arbitrary code execution on install     | pi's own build scripts (none exist) won't run; project is `.ts` source only |
+| Private package         | Not published to npm; distributed via git      | No npm-side protection; rely on git and code review                         |

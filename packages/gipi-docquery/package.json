@@ -1,0 +1,43 @@
+{
+  "name": "@giovannipapini/gipi-docquery",
+  "version": "0.1.0",
+  "description": "Queries library documentation through the Context7 API",
+  "keywords": [
+    "pi-package"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/giovannipapini/gipi.git",
+    "directory": "packages/gipi-docquery"
+  },
+  "bugs": "https://github.com/giovannipapini/gipi/issues",
+  "homepage": "https://github.com/giovannipapini/gipi/tree/main/packages/gipi-docquery#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist"
+    ]
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "prepublishOnly": "node -e \"process.env.CI === 'true' || (console.error('publish only from CI'), process.exit(1))\""
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  }
+}
