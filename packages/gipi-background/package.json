@@ -34,7 +34,7 @@
     "prepublishOnly": "node -e \"process.env.CI === 'true' || (console.error('publish only from CI'), process.exit(1))\""
   },
   "dependencies": {
-    "execa": "^9.6.1",
+    "execa": "^10.2.0",
     "nanoid": "^5.1.16"
   },
   "peerDependencies": {

@@ -2,7 +2,7 @@ import { closeSync, existsSync, openSync, readSync, statSync, writeFileSync } fr
 import { join } from 'node:path'
 import { getShellConfig } from '@earendil-works/pi-coding-agent'
 import type { Options } from 'execa'
-import { execaCommand } from 'execa'
+import { execa } from 'execa'
 import { jobId } from '../../lib/id.js'
 import { isPidAlive, killProcessTree, SIGKILL_GRACE_MS } from '../../lib/process.js'
 import { ensureSessionDir, saveJobs, sessionDir } from './store.js'
@@ -124,7 +124,10 @@ export function createRegistry(sessionId: string, onChange: () => void): JobRegi
           // Status is tracked via the 'exit'/'error' events below instead.
           reject: false,
         } satisfies Options
-        const child = execaCommand(command, execaOpts)
+        const child = execa(command, execaOpts)
+        // execa 10 exposes Node's ChildProcess (and its events, ref/unref) only
+        // through this escape hatch; the subprocess itself is a Promise-like.
+        const nodeChild = child.nodeChildProcess
 
         job.pid = child.pid ?? -1
         job.status = 'running'
@@ -132,15 +135,15 @@ export function createRegistry(sessionId: string, onChange: () => void): JobRegi
 
         // Attach listeners BEFORE closing the parent's copy of the fds and
         // BEFORE any async hop, so a synchronous spawn error is still caught.
-        child.on('exit', (code, signal) => markExited(job, code, signal))
-        child.on('error', () => {
+        nodeChild.on('exit', (code, signal) => markExited(job, code, signal))
+        nodeChild.on('error', () => {
           job.endedAt = Date.now()
           job.status = 'failed'
           clearTimer(sigkillTimers, job.id)
           clearTimer(timeoutTimers, job.id)
           notifyChange()
         })
-        if (IS_UNIX) child.unref()
+        if (IS_UNIX) nodeChild.unref()
 
         if (timeoutSeconds && timeoutSeconds > 0) {
           timeoutTimers.set(
