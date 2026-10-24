@@ -39,7 +39,6 @@ single `dist/index.js`, inlining `lib/` and leaving bare imports (pi peers,
 ```
 
 Rules for a new extension:
-
 - one directory under `packages/`, one `package.json`, one `index.ts` entry point
 - resource directories (`extensions/`, `themes/`) inside a package contain only
   resources — never a `package.json`, or pi will try to load the manifest as a resource
@@ -50,7 +49,6 @@ Rules for a new extension:
 ## Releases
 
 Releases are per package, from `main`, and gated by CI.
-
 1. Bump `version` in that one package's `package.json` (e.g. `packages/gipi-rtk`).
 2. Commit and merge to `main` through a PR (the branch ruleset requires the
    `verify` check).
@@ -59,10 +57,9 @@ Releases are per package, from `main`, and gated by CI.
 
 `.github/workflows/release.yml` then checks the tag against the manifest, verifies
 the tree, refuses an already-published version, publishes with
-`npm publish --provenance`, attests the tarball, and opens the GitHub release.
+`pnpm publish --provenance`, attests the tarball, and opens the GitHub release.
 
 Guardrails in place:
-
 - no npm token exists in the repo — publishing uses GitHub OIDC trusted
   publishing, configured per package on npm (repository `giovannipapini/gipi`,
   workflow `release.yml`, environment `npm`)

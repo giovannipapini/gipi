@@ -5,9 +5,13 @@
 //      declare — the way sources, logs and stray configs leak into a release
 //   2. a bundle that still imports a relative path, which would break once the
 //      package is installed outside this workspace (lib/ must be inlined)
+//
+// Packing here is done by pnpm, the same tool that publishes, so the file list
+// inspected is the file list shipped.
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const ALWAYS_ALLOWED = new Set([
@@ -18,11 +22,7 @@ const ALWAYS_ALLOWED = new Set([
   'CHANGELOG.md',
 ])
 
-// pnpm exports npm_config_* for its own settings; npm then warns about each key
-// it does not know. Spawn npm with a clean env so CI logs stay readable.
-const npmEnv = Object.fromEntries(
-  Object.entries(process.env).filter(([key]) => !key.startsWith('npm_config_')),
-)
+const RELATIVE_IMPORT = /from\s+["']\.{1,2}\//
 
 const dirs = readdirSync('packages', { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -39,19 +39,28 @@ const matchesAllowlist = (path, allowlist) =>
   ALWAYS_ALLOWED.has(path) ||
   allowlist.some((entry) => path === entry || path.startsWith(`${entry.replace(/\/$/, '')}/`))
 
-const RELATIVE_IMPORT = /from\s+["']\.{1,2}\//
+/** Runs `pnpm pack` into a throwaway directory and returns the packed file list. */
+function packedFiles(dir) {
+  const out = mkdtempSync(join(tmpdir(), 'gipi-pack-'))
+  try {
+    const raw = execFileSync('pnpm', ['pack', '--json', '--silent', '--pack-destination', out], {
+      cwd: dir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'inherit'],
+    })
+    const result = JSON.parse(raw)
+    const entry = Array.isArray(result) ? result.at(0) : result
+    return { files: entry.files.map((file) => file.path), filename: entry.filename }
+  } finally {
+    rmSync(out, { recursive: true, force: true })
+  }
+}
 
 let failed = false
 for (const dir of dirs) {
   const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
-  const raw = execFileSync(
-    'npm',
-    ['pack', '--dry-run', '--json', '--ignore-scripts', '--loglevel=error'],
-    { cwd: dir, encoding: 'utf8', env: npmEnv, stdio: ['ignore', 'pipe', 'inherit'] },
-  )
-  const [{ files, size }] = JSON.parse(raw)
-  const paths = files.map((file) => file.path)
-  const offenders = paths.filter((path) => !matchesAllowlist(path, manifest.files ?? []))
+  const { files, filename } = packedFiles(dir)
+  const offenders = files.filter((path) => !matchesAllowlist(path, manifest.files ?? []))
 
   if (offenders.length > 0) {
     console.error(
@@ -59,7 +68,7 @@ for (const dir of dirs) {
     )
     failed = true
   }
-  if (!paths.some((path) => path !== 'package.json')) {
+  if (!files.some((path) => path !== 'package.json')) {
     console.error(`${manifest.name}: tarball contains nothing but package.json`)
     failed = true
   }
@@ -72,9 +81,9 @@ for (const dir of dirs) {
     failed = true
   }
 
-  const shipped = paths.filter((path) => path !== 'package.json')
+  const shipped = files.filter((path) => path !== 'package.json')
   console.log(
-    `${manifest.name}: ${paths.length} files, ${(size / 1024).toFixed(1)} kB — ${shipped.join(', ')}`,
+    `${manifest.name}: ${files.length} files — ${shipped.join(', ')} (${filename.split('/').at(-1)})`,
   )
 }
 

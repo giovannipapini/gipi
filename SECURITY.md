@@ -66,7 +66,6 @@ trustPolicy: no-downgrade
 ## 2. Lockfile — Reproducible Installs
 
 **Policy: ALWAYS commit `pnpm-lock.yaml`.**
-
 - The lockfile provides **cryptographic hash pinning** for every direct
   and transitive dependency. [OSSF §Dependency Management][ossf]
 - `pnpm install` verifies hashes at install time — any unauthorized
@@ -86,7 +85,6 @@ trustPolicy: no-downgrade
 ### 3.1 Intake — vetting before adding
 
 Before adding a new dependency, verify:
-
 - **No typosquatting** — Compare the npm package name against the
   official GitHub repository. Non-ASCII homographs are now blocked by
   npm, but typosquatting (e.g. `eventstreem` vs `event-stream`) is not.
@@ -100,7 +98,7 @@ Before adding a new dependency, verify:
 
 ### 3.2 Maintenance — keeping current
 
-- Run `pnpm audit` (or `npm audit`) regularly to check for known CVEs
+- Run `pnpm audit` regularly to check for known CVEs
   in the dependency tree.
 - Use automated dependency updates (Dependabot / Renovate) with a
   cooldown period — avoid installing packages published less than 30
@@ -111,7 +109,6 @@ Before adding a new dependency, verify:
 ### 3.3 Vulnerability disclosure
 
 If you discover a vulnerability in this project or its dependencies:
-
 1. **Do not** open a public GitHub issue.
 2. Email **giovanni@papini.dev** with details.
 3. Allow 7 days for triage before any public disclosure.
@@ -168,7 +165,7 @@ GitHub release with a [build provenance attestation][attest]. Verify with:
 
 ```bash
 gh attestation verify <tarball> --repo giovannipapini/gipi
-npm audit signatures
+pnpm audit --signatures
 ```
 
 [npm docs: Provenance](https://docs.npmjs.com/generating-provenance-statements/)
@@ -179,7 +176,7 @@ npm audit signatures
 - `release.yml` refuses to publish when the tag disagrees with the manifest, when
   the tag is not an ancestor of `main`, or when the version already exists
 - every package's `prepublishOnly` exits non-zero outside CI, so a stray local
-  `npm publish` is impossible
+  `pnpm publish` is impossible
 
 ---
 

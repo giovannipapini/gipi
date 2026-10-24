@@ -1,26 +1,39 @@
-# Publishable packages: one per extension, plus the theme bundle.
+# ── workspace ────────────────────────────────────────────────────────
+# One publishable package per extension, plus the theme bundle.
 packages:
   - "packages/*"
 
-# ── pnpm workspace & supply-chain security ──────────────────────────
+# ── supply-chain policy ──────────────────────────────────────────────
 # Sources:
-#   lirantal/npm-security-best-practices — https://github.com/lirantal/npm-security-best-practices
+#   lirantal/npm-security-best-practices
 #   pnpm supply chain docs — https://pnpm.io/supply-chain-security
 
-# Block install scripts from all dependencies by default (pnpm 10+).
-# Only explicitly allowed packages may run build scripts.
-# For this project, no deps need install scripts — pi bundles its own core.
-onlyBuiltDependencies: []
+# No dependency may run an install script unless it is approved here by name
+# and by decision. `pnpm approve-builds <pkg>` / `!<pkg>` maintains this map.
+# esbuild is the only approval: its postinstall links the platform binary that
+# arrives as a pinned optionalDependency. Denials are recorded too, so a
+# dependency that later adds a script fails the install instead of silently
+# gaining code execution.
+allowBuilds:
+  "@google/genai": false
+  esbuild: true
+  protobufjs: false
 
-# Fail install if any dependency tries to run a build script not in
-# the allow-list above. (pnpm 10.3+)
+# Fail the install when a dependency wants a script that is neither approved
+# nor denied above.
 strictDepBuilds: true
 
-# Block dependencies sourced from git URLs — must come from the
-# registry (pnpm 10.27+). Git deps bypass registry security controls.
+# Dependencies must come from the registry: git and tarball URLs bypass
+# registry scanning, provenance and signature checks.
 blockExoticSubdeps: true
 
-# ── In future (pnpm >= 10.21), uncomment to enable trust policy ──
-# trustPolicy: no-downgrade
-# trustPolicyExclude: []
-# trustPolicyIgnoreAfter: 43200
+# Refuse packages published less than a day ago, so a compromised release has
+# a window to be caught before it lands here.
+minimumReleaseAge: 1440
+
+# Refuse a version downgrade relative to the lockfile. One exclusion: undici-types
+# is types-only (erased at build time, no runtime code) and its 6.x line trips the
+# heuristic; excluding it keeps the check on for everything that actually runs.
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - undici-types

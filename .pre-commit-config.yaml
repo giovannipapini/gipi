@@ -10,6 +10,8 @@ repos:
         args: [--fix=lf]
       - id: check-merge-conflict
       - id: check-yaml
+        # pnpm >= 11 writes a multi-document lockfile; pnpm validates it itself.
+        exclude: ^pnpm-lock\.yaml$
       - id: check-json
       - id: check-added-large-files
         args: [--maxkb=512]

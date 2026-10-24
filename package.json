@@ -9,10 +9,10 @@
   "license": "MIT",
   "repository": "github:giovannipapini/gipi",
   "bugs": "https://github.com/giovannipapini/gipi/issues",
-  "packageManager": "pnpm@10.8.0",
+  "packageManager": "pnpm@12.15.0",
   "engines": {
-    "node": ">=20",
-    "pnpm": ">=10"
+    "node": ">=22",
+    "pnpm": ">=12"
   },
   "type": "module",
   "pi": {
@@ -39,7 +39,7 @@
     "typebox": "*"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.3",
+    "@biomejs/biome": "2.6.2",
     "@earendil-works/pi-agent-core": "^1.4.0",
     "@earendil-works/pi-ai": "^1.4.0",
     "@earendil-works/pi-coding-agent": "^1.4.0",

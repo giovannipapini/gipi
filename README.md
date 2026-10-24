@@ -89,7 +89,7 @@ Every release is verifiable:
 
 ```bash
 gh attestation verify <tarball> --repo giovannipapini/gipi
-npm audit signatures
+pnpm audit --signatures
 ```
 
 ## License
