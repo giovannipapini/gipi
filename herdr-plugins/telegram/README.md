@@ -32,7 +32,7 @@ TELEGRAM_CHAT_ID=123456789
 Verify:
 
 ```bash
-herdr plugin action invoke check   --plugin gipi.telegram   # masked config + perms
+herdr plugin action invoke check   --plugin gipi.telegram   # masked config, perms, turn-end mapping
 herdr plugin action invoke preview --plugin gipi.telegram   # print the message, send nothing
 herdr plugin action invoke preview-done --plugin gipi.telegram  # same, for `done`
 herdr plugin action invoke test    --plugin gipi.telegram   # one real message
@@ -91,9 +91,11 @@ Hence `✅ pi finished · 1 waiting` — 27 characters, the event _and_ the reas
 ever see the list. Icons are limited to one per line and never replace a word.
 
 `herdr plugin log list` shows `exit_code` and `status` — read **stderr**, not the
-status: every skip path exits 0, so `succeeded` only means the hook ran. If the session
-snapshot cannot be read the roster is skipped and stderr says `roster unavailable`, so a
-message without a list is never mistaken for a session with no other agents.
+status: every skip path exits 0, so `succeeded` only means the hook ran. Every skip says
+why, including a status the settings do not notify on (`skip: idle is not a notify state
+(previous working)`). If the session snapshot cannot be read the roster is skipped and
+stderr says `roster unavailable`, so a message without a list is never mistaken for a
+session with no other agents.
 
 ## Settings
 
@@ -107,6 +109,15 @@ message without a list is never mistaken for a session with no other agents.
 The cooldown is keyed by pane **and** state: an agent that finishes out of focus
 and asks for input again 10 seconds later still sends both messages.
 
+### `done` for agents that never report it
+
+Herdr's `done` is "finished this turn", but not every integration reports it: **pi**
+reports the same moment as `working` → `idle`. So an `idle` that follows `working`
+notifies as `done` (`✅ pi finished`), while an `idle` that was already idle — a session
+start, a reload — says nothing. The plugin keeps each pane's last status in its state
+file to make that distinction; listing `idle` in `TELEGRAM_STATES` opts back in to raw
+idle transitions (`💤 … went idle`).
+
 ## Tests
 
 ```bash
@@ -115,8 +126,9 @@ pnpm test          # node --test: the rules in hook.mjs, no Herdr or network nee
 
 The gating and wording live in `hook.mjs` as pure functions (state, clock and pane
 snapshot arrive as arguments), so `hook.test.mjs` covers them directly: default and
-parsed states, focus resolution, per-status cooldown, the message body, and the
-roster (urgency order, trigger-pane exclusion, shell panes, the cap and its `+N more`).
+parsed states, turn-end mapping (`done`, and `working` → `idle`), focus resolution,
+per-status cooldown, the message body, and the roster (urgency order, trigger-pane
+exclusion, shell panes, the cap and its `+N more`).
 `notify.mjs` is only the wiring to Herdr, Telegram and the state file.
 
 ## Credentials

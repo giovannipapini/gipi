@@ -22,6 +22,8 @@ console.log(`plugin      ${process.env.HERDR_PLUGIN_ID ?? '(not run by Herdr)'}`
 console.log(`config dir  ${process.env.HERDR_PLUGIN_CONFIG_DIR ?? '(unset)'}`)
 console.log(`state dir   ${stateDir()}`)
 console.log(`states      ${states || `${DEFAULT_STATES} (default)`}`)
+// pi has no `done`: it reports the end of a turn as working → idle
+console.log('turn end    working → idle is read as done')
 console.log(`quiet focus ${envFlag('TELEGRAM_QUIET_WHEN_FOCUSED', DEFAULT_QUIET_WHEN_FOCUSED)}`)
 console.log(`cooldown    ${envNumber('TELEGRAM_COOLDOWN_SECONDS', DEFAULT_COOLDOWN_SECONDS)}s`)
 console.log(

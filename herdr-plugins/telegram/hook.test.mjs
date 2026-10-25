@@ -10,6 +10,8 @@ import {
   formatMessage,
   isFocusedPane,
   markNotified,
+  markSeen,
+  notifyAs,
   parseStates,
   recentlyNotified,
   rosterFromSnapshot,
@@ -84,6 +86,56 @@ test('focus falls back to the context for a pane that is already gone', () => {
   assert.equal(isFocusedPane(undefined, context, 'w8:p1'), true)
   assert.equal(isFocusedPane(undefined, { focused_pane: { pane_id: 'w8:p2' } }, 'w8:p1'), false)
   assert.equal(isFocusedPane(undefined, {}, 'w8:p1'), false)
+})
+
+test('a finished turn notifies whether the agent reports done or goes idle', () => {
+  const defaults = parseStates(undefined)
+  // integrations that report the end of a turn directly
+  assert.equal(notifyAs({ status: 'done', previous: 'working', states: defaults }), 'done')
+  // pi reports it as working → idle, which is the same moment
+  assert.equal(notifyAs({ status: 'idle', previous: 'working', states: defaults }), 'done')
+})
+
+test('an idle that does not follow work stays quiet', () => {
+  const defaults = parseStates(undefined)
+  assert.equal(notifyAs({ status: 'idle', previous: undefined, states: defaults }), undefined)
+  assert.equal(notifyAs({ status: 'idle', previous: 'idle', states: defaults }), undefined)
+  assert.equal(notifyAs({ status: 'working', previous: 'idle', states: defaults }), undefined)
+})
+
+test('a raw idle still notifies when the states list asks for it', () => {
+  const states = parseStates('blocked,idle')
+  assert.equal(notifyAs({ status: 'idle', previous: undefined, states }), 'idle')
+  // ...but a finished turn is only mapped when `done` is wanted
+  assert.equal(notifyAs({ status: 'idle', previous: 'working', states }), 'idle')
+  assert.equal(
+    notifyAs({ status: 'idle', previous: 'working', states: parseStates('blocked') }),
+    undefined,
+  )
+})
+
+test('blocked and an unknown status pass through as themselves', () => {
+  const defaults = parseStates(undefined)
+  assert.equal(notifyAs({ status: 'blocked', previous: 'working', states: defaults }), 'blocked')
+  assert.equal(notifyAs({ status: 'paused', previous: 'working', states: defaults }), undefined)
+  assert.equal(notifyAs({ status: 'paused', previous: 'working', states: ['paused'] }), 'paused')
+})
+
+test('a seen status is remembered without touching the notify stamps', () => {
+  const before = { done: 2 }
+  assert.deepEqual(markSeen({ paneState: before, status: 'working', now: 3 }), {
+    done: 2,
+    lastStatus: 'working',
+    lastSeenAt: 3,
+  })
+  assert.deepEqual(before, { done: 2 }, 'the input state is not mutated')
+
+  const seen = markSeen({ paneState: before, status: 'idle', now: 4 })
+  assert.deepEqual(markNotified({ paneState: seen, status: 'done', now: 5 }), {
+    done: 5,
+    lastStatus: 'idle',
+    lastSeenAt: 4,
+  })
 })
 
 test('blocked and done read differently but share the location and title', () => {

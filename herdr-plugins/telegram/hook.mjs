@@ -9,7 +9,8 @@
 
 /**
  * States that notify when `TELEGRAM_STATES` is unset. `blocked` needs you now;
- * `done` is what makes it safe to look away in the first place.
+ * `done` is what makes it safe to look away in the first place (for an integration
+ * that reports no `done`, `notifyAs` reads its `working` → `idle` as one).
  */
 export const DEFAULT_STATES = 'blocked,done'
 
@@ -63,6 +64,20 @@ export function parseStates(raw) {
 }
 
 /**
+ * The status to notify as, or `undefined` to stay quiet.
+ *
+ * Herdr's `done` means "finished turn", but only some integrations report it: pi
+ * reports the same moment as `working` → `idle`, so that transition counts as the
+ * `done` the states list asks for. A plain `idle` still notifies for anyone who
+ * lists it (a session start or a reload that was already idle).
+ */
+export function notifyAs({ status, previous, states }) {
+  if (states.includes(status)) return status
+  if (status === 'idle' && previous === 'working' && states.includes('done')) return 'done'
+  return undefined
+}
+
+/**
  * Whether you are looking at the pane that changed. The pane snapshot decides
  * when it has an opinion; the event context is a fallback for a pane that has
  * already gone.
@@ -81,6 +96,11 @@ export function isFocusedPane(pane, context, paneId) {
 export function recentlyNotified({ paneState, status, cooldownSeconds, now }) {
   const last = paneState?.[status]
   return typeof last === 'number' && now - last < cooldownSeconds * 1000
+}
+
+/** The pane's state after any status change: what it was, and when we saw it. */
+export function markSeen({ paneState, status, now }) {
+  return { ...(paneState ?? {}), lastStatus: status, lastSeenAt: now }
 }
 
 /** The pane's state after a message, keeping every other status' timestamp. */

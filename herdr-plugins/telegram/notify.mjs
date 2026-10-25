@@ -21,6 +21,8 @@ import {
   formatMessage,
   isFocusedPane,
   markNotified,
+  markSeen,
+  notifyAs,
   parseStates,
   recentlyNotified,
   rosterFromSnapshot,
@@ -83,28 +85,57 @@ async function runEvent() {
   const context = readJsonEnv('HERDR_PLUGIN_CONTEXT_JSON')
   const data = readJsonEnv('HERDR_PLUGIN_EVENT_JSON').data ?? {}
   const status = String(data.agent_status ?? '').toLowerCase()
-
-  if (!parseStates(process.env.TELEGRAM_STATES).includes(status)) return
-
   const paneId = data.pane_id ?? process.env.HERDR_PANE_ID
+
+  const now = Date.now()
+  const state = readState()
+  state.panes = state.panes ?? {}
+  const paneState = state.panes[paneId]
+  const previous = paneState?.lastStatus
+  // Herdr re-publishes the same status on a reload; that is not a change
+  if (previous === status) return
+
+  // every path below records the status, so the next event can tell a finished
+  // turn (working → idle) from a session that was already idle
+  const record = (notifiedAs) => {
+    const seen = markSeen({ paneState: state.panes[paneId], status, now })
+    state.panes[paneId] = notifiedAs
+      ? markNotified({ paneState: seen, status: notifiedAs, now })
+      : seen
+    writeState(state)
+  }
+
+  const notifiedAs = notifyAs({
+    status,
+    previous,
+    states: parseStates(process.env.TELEGRAM_STATES),
+  })
+  if (!notifiedAs) {
+    record()
+    return skip(`${status} is not a notify state (previous ${previous ?? 'none'})`)
+  }
+
   const pane = paneInfo(paneId)
 
   const quiet = envFlag('TELEGRAM_QUIET_WHEN_FOCUSED', DEFAULT_QUIET_WHEN_FOCUSED)
-  if (quiet && isFocusedPane(pane, context, paneId)) return skip(`${paneId} is focused`)
-
-  const cooldown = envNumber('TELEGRAM_COOLDOWN_SECONDS', DEFAULT_COOLDOWN_SECONDS)
-  const state = readState()
-  const paneState = state.panes?.[paneId]
-  const now = Date.now()
-  if (cooldown > 0 && recentlyNotified({ paneState, status, cooldownSeconds: cooldown, now })) {
-    return skip(`${paneId} notified ${status} less than ${cooldown}s ago`)
+  if (quiet && isFocusedPane(pane, context, paneId)) {
+    record()
+    return skip(`${paneId} is focused`)
   }
 
-  if (!(await attempt(formatMessage({ status, pane, context, paneId, ...roster(paneId) })))) return
+  const cooldown = envNumber('TELEGRAM_COOLDOWN_SECONDS', DEFAULT_COOLDOWN_SECONDS)
+  if (
+    cooldown > 0 &&
+    recentlyNotified({ paneState, status: notifiedAs, cooldownSeconds: cooldown, now })
+  ) {
+    record()
+    return skip(`${paneId} notified ${notifiedAs} less than ${cooldown}s ago`)
+  }
 
-  state.panes = state.panes ?? {}
-  state.panes[paneId] = markNotified({ paneState, status, now })
-  writeState(state)
+  const sent = await attempt(
+    formatMessage({ status: notifiedAs, pane, context, paneId, ...roster(paneId) }),
+  )
+  record(sent ? notifiedAs : undefined)
 }
 
 /**
