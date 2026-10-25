@@ -18,7 +18,7 @@ daily driver setup.
 | **gipi-background**    | Long-running background job manager (tmux-style process pools)                                                                          |
 | **gipi-dedup**         | Deduplicates read/edit tool output to reduce noise                                                                                      |
 | **gipi-herdr-blocked** | Marks pi `blocked` in Herdr while any blocking UI prompt (ask_user_question, gipi-safety confirmations, extension dialogs) awaits input |
-| **gipi-namesession**   | Auto-names sessions via the LLM: short lowercase descriptive names after first few exchanges                                            |
+| **gipi-namesession**   | Names every session at t0 (`π · <project> · YYYYMMDDTHHMM`), then auto-renames it via the LLM after the first exchanges                 |
 | **gipi-docquery**      | Query library docs via Context7 API                                                                                                     |
 | **gipi-safety**        | Interactive tool confirmation guard with plugin rules                                                                                   |
 | **gipi-spinner**       | Animated spinner with witty verbs during tool execution                                                                                 |

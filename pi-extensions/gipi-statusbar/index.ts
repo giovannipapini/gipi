@@ -85,7 +85,8 @@ export default function extension(pi: ExtensionAPI) {
 
   function updateTabTitle() {
     if (sessionName) {
-      setTitle?.(`pi-agent (${sessionName})`)
+      // Structured default names ("π · gipi · 20261025T0039") already read as a title.
+      setTitle?.(sessionName.startsWith('π') ? sessionName : `pi-agent (${sessionName})`)
     } else {
       setTitle?.(`pi-agent #${sessionId}`)
     }

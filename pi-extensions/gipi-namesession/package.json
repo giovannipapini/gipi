@@ -1,7 +1,7 @@
 {
   "name": "@giovannipapini/gipi-namesession",
-  "version": "0.1.0",
-  "description": "Auto-names pi sessions with short lowercase names via the LLM",
+  "version": "0.1.1",
+  "description": "Names sessions at t0 (π · <project> \u00b7 timestamp) and auto-renames them via the LLM",
   "keywords": [
     "pi-package"
   ],

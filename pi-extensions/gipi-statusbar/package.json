@@ -1,6 +1,6 @@
 {
   "name": "@giovannipapini/gipi-statusbar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Custom pi footer with git status, context usage, cost and model info",
   "keywords": [
     "pi-package"

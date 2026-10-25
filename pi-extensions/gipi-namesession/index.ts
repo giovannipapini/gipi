@@ -1,14 +1,32 @@
 /**
- * gipi-namesession extension — auto-names pi sessions using the LLM.
+ * gipi-namesession extension — names pi sessions.
  *
- * After a few exchanges, queues a follow-up asking the LLM to suggest a
- * short lowercase descriptive name via the name_session tool.  Names are
- * always lowercase, 1-3 words, no punctuation — llm-friendly labels like
- * "refactor auth", "debug oom", "setup ci".
+ * At t0 (session start) an unnamed session immediately gets a structured
+ * default: `π · <project> · YYYYMMDDTHHMM` (local time), e.g.
+ * `π · gipi · 20261025T0039`.  That is only a placeholder: after a few
+ * exchanges the extension queues a follow-up asking the LLM to replace it
+ * with a short lowercase descriptive name via the name_session tool —
+ * llm-friendly labels like "refactor auth", "debug oom", "setup ci".
  */
 
+import { basename } from 'node:path'
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 import { Type } from 'typebox'
+
+/** Prefix of the structured t0 default name; anything else was chosen deliberately. */
+const DEFAULT_NAME_PREFIX = 'π · '
+
+function isDefaultName(name: string | undefined): boolean {
+  return name?.startsWith(DEFAULT_NAME_PREFIX) ?? false
+}
+
+/** `π · <project> · YYYYMMDDTHHMM` in local time. */
+function defaultSessionName(cwd: string, now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}T${pad(now.getHours())}${pad(now.getMinutes())}`
+  const project = basename(cwd) || 'session'
+  return `${DEFAULT_NAME_PREFIX}${project} · ${stamp}`
+}
 
 export default function (pi: ExtensionAPI) {
   let isNamed = false
@@ -16,6 +34,21 @@ export default function (pi: ExtensionAPI) {
   let lastNudgeMsgCount = 0
   const MAX_ATTEMPTS = 2
   const MIN_USER_MSGS = 1
+
+  // t0: give every unnamed session a structured default name before the LLM gets a say.
+  pi.on('session_start', async (_event, ctx) => {
+    isNamed = false
+    namingAttempts = 0
+    lastNudgeMsgCount = 0
+
+    // Resumed/forked sessions keep whatever name they already carry, default or not.
+    const existing = pi.getSessionName()?.trim()
+    if (existing) {
+      isNamed = !isDefaultName(existing)
+      return
+    }
+    pi.setSessionName(defaultSessionName(ctx.cwd))
+  })
 
   pi.registerTool({
     name: 'name_session',
@@ -44,7 +77,7 @@ export default function (pi: ExtensionAPI) {
   })
 
   pi.on('session_info_changed', async (event) => {
-    if (event.name) isNamed = true
+    isNamed = event.name !== undefined && !isDefaultName(event.name)
   })
 
   pi.registerCommand('autoname', {
