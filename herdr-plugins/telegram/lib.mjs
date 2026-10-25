@@ -152,15 +152,24 @@ export async function sendTelegram(text) {
   }
 }
 
-/** Authoritative pane snapshot, or undefined when the pane is already gone. */
-export function paneInfo(paneId) {
-  if (!paneId) return undefined
+/** JSON `result` from a Herdr CLI call, or undefined when Herdr cannot answer. */
+function herdrJson(args) {
   const bin = process.env.HERDR_BIN_PATH ?? 'herdr'
-  const result = spawnSync(bin, ['pane', 'get', paneId], { encoding: 'utf8' })
+  const result = spawnSync(bin, args, { encoding: 'utf8' })
   if (result.error || result.status !== 0) return undefined
   try {
-    return JSON.parse(result.stdout)?.result?.pane
+    return JSON.parse(result.stdout)?.result
   } catch {
     return undefined
   }
+}
+
+/** Authoritative pane snapshot, or undefined when the pane is already gone. */
+export function paneInfo(paneId) {
+  return paneId ? herdrJson(['pane', 'get', paneId])?.pane : undefined
+}
+
+/** Live session state — every pane, tab and workspace — or undefined when Herdr is unreachable. */
+export function sessionSnapshot() {
+  return herdrJson(['api', 'snapshot'])?.snapshot
 }

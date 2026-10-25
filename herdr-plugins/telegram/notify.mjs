@@ -16,12 +16,14 @@
 import {
   DEFAULT_COOLDOWN_SECONDS,
   DEFAULT_QUIET_WHEN_FOCUSED,
+  DEFAULT_ROSTER_LIMIT,
   DEFAULT_STATES,
   formatMessage,
   isFocusedPane,
   markNotified,
   parseStates,
   recentlyNotified,
+  rosterFromSnapshot,
 } from './hook.mjs'
 import {
   envFlag,
@@ -31,6 +33,7 @@ import {
   readJsonEnv,
   readState,
   sendTelegram,
+  sessionSnapshot,
   writeState,
 } from './lib.mjs'
 
@@ -53,8 +56,17 @@ if (flag('--test')) {
 
 function runDryRun() {
   const status = (option('--status') ?? 'blocked').toLowerCase()
-  const pane = paneInfo(process.env.HERDR_PANE_ID)
-  console.log(formatMessage({ status, pane, context: readJsonEnv('HERDR_PLUGIN_CONTEXT_JSON') }))
+  const paneId = process.env.HERDR_PANE_ID
+  const pane = paneInfo(paneId)
+  console.log(
+    formatMessage({
+      status,
+      pane,
+      paneId,
+      context: readJsonEnv('HERDR_PLUGIN_CONTEXT_JSON'),
+      ...roster(paneId),
+    }),
+  )
 }
 
 async function runTest() {
@@ -88,11 +100,25 @@ async function runEvent() {
     return skip(`${paneId} notified ${status} less than ${cooldown}s ago`)
   }
 
-  if (!(await attempt(formatMessage({ status, pane, context, paneId })))) return
+  if (!(await attempt(formatMessage({ status, pane, context, paneId, ...roster(paneId) })))) return
 
   state.panes = state.panes ?? {}
   state.panes[paneId] = markNotified({ paneState, status, now })
   writeState(state)
+}
+
+/**
+ * The other agents in the session, for the roster below the message. A missing
+ * snapshot costs the roster, never the notification itself.
+ */
+function roster(excludePaneId) {
+  const snapshot = sessionSnapshot()
+  if (!snapshot) console.error('roster unavailable: no session snapshot')
+
+  return {
+    others: snapshot ? rosterFromSnapshot(snapshot, { excludePaneId }) : [],
+    rosterLimit: envNumber('TELEGRAM_ROSTER_LIMIT', DEFAULT_ROSTER_LIMIT),
+  }
 }
 
 function skip(reason) {

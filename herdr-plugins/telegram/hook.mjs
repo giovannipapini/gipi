@@ -19,6 +19,9 @@ export const DEFAULT_COOLDOWN_SECONDS = 120
 /** Stay silent while you are looking at the pane that changed. */
 export const DEFAULT_QUIET_WHEN_FOCUSED = true
 
+/** Roster lines shown by default; `0` leaves the roster out entirely. */
+export const DEFAULT_ROSTER_LIMIT = 5
+
 /** Beyond this a terminal title stops being a hint and becomes noise. */
 const TITLE_LIMIT = 80
 
@@ -33,6 +36,19 @@ const HEADLINE = {
   idle: (agent) => `💤 ${agent} went idle`,
   working: (agent) => `⚙️ ${agent} started working`,
 }
+
+/**
+ * Roster order: what you have to look at first, then what you only want to know.
+ * The icon is the only per-state decoration — Material's guidance is sparse emoji,
+ * words doing the work.
+ */
+const ROSTER = {
+  blocked: { icon: '⚠️', rank: 0 },
+  done: { icon: '✅', rank: 1 },
+  working: { icon: '⚙️', rank: 2 },
+  idle: { icon: '💤', rank: 3 },
+}
+const ROSTER_FALLBACK = { icon: '·', rank: 4 }
 
 /**
  * `TELEGRAM_STATES` as a normalised list. A blank setting means the defaults,
@@ -77,18 +93,107 @@ export function markNotified({ paneState, status, now }) {
 }
 
 /** The message body: headline, where to look, and what the pane is showing. */
-export function formatMessage({ status, pane, context, paneId, home = process.env.HOME }) {
+export function formatMessage({
+  status,
+  pane,
+  context,
+  paneId,
+  home = process.env.HOME,
+  others = [],
+  rosterLimit = DEFAULT_ROSTER_LIMIT,
+}) {
   const agent = agentLabel(pane, context)
   const cwd = compactHome(pane?.cwd ?? pane?.foreground_cwd ?? context?.focused_pane_cwd, home)
   const title = terminalTitle(pane, cwd)
 
   return [
-    headlineFor(status)(agent),
+    `${headlineFor(status)(agent)}${waitingSuffix(others)}`,
     herdrReference({ pane, context, paneId }),
     [title, cwd].filter(Boolean).join(' · '),
+    ...rosterLines(others, { limit: rosterLimit }),
   ]
     .filter(Boolean)
     .join('\n')
+}
+
+/**
+ * The other agents in the session, most urgent first: panes Herdr reports as
+ * running an agent, minus the one this message is already about.
+ */
+export function rosterFromSnapshot(snapshot, { excludePaneId } = {}) {
+  const tabs = new Map((snapshot?.tabs ?? []).map((tab) => [tab.tab_id, tab]))
+
+  return (snapshot?.panes ?? [])
+    .filter((pane) => isAgentPane(pane) && pane.pane_id !== excludePaneId)
+    .map((pane) => {
+      const tab = tabs.get(pane.tab_id)
+      return {
+        agent: String(pane.agent).trim().toLowerCase(),
+        status: String(pane.agent_status ?? '')
+          .trim()
+          .toLowerCase(),
+        project: projectName(pane.cwd ?? pane.foreground_cwd),
+        tabLabel: tab?.label,
+        tabNumber: tab?.number ?? 0,
+        paneId: pane.pane_id,
+        // A tab id only earns its space when the tab holds more than one pane.
+        sharedTab: (tab?.pane_count ?? 1) > 1,
+      }
+    })
+    .sort((a, b) => rosterRank(a.status) - rosterRank(b.status) || a.tabNumber - b.tabNumber)
+}
+
+/** The roster block, or nothing when it is switched off or empty. */
+export function rosterLines(entries, { limit = DEFAULT_ROSTER_LIMIT } = {}) {
+  if (limit <= 0 || entries.length === 0) return []
+
+  const shown = entries.slice(0, limit)
+  const hidden = entries.length - shown.length
+  const header = `── other ${plural(entries.length, 'agent')} · ${entries.length} ──`
+
+  // Never truncate silently: the remainder is named, not dropped.
+  return [header, ...shown.map(rosterLine), ...(hidden > 0 ? [`+${hidden} more`] : [])]
+}
+
+/**
+ * Front-load the reason to pick up the phone: a blocked agent is the one thing
+ * that cannot wait for you to open the message.
+ */
+function waitingSuffix(others) {
+  const waiting = others.filter((entry) => entry.status === 'blocked').length
+  return waiting > 0 ? ` · ${waiting} waiting` : ''
+}
+
+function rosterLine({ agent, status, project, tabLabel, paneId, sharedTab }) {
+  const icon = ROSTER[status]?.icon ?? ROSTER_FALLBACK.icon
+  const where = [
+    project,
+    tabLabel === undefined ? undefined : `tab ${tabLabel}`,
+    sharedTab ? paneId : undefined,
+  ].filter(Boolean)
+
+  return [`${icon} ${agent}`, ...where].join(' · ')
+}
+
+function rosterRank(status) {
+  return ROSTER[status]?.rank ?? ROSTER_FALLBACK.rank
+}
+
+function isAgentPane(pane) {
+  return typeof pane?.agent === 'string' && pane.agent.trim() !== ''
+}
+
+/** Last path segment: what the pane is working on, in one word. */
+function projectName(path) {
+  return String(path ?? '')
+    .trim()
+    .split('/')
+    .filter(Boolean)
+    .at(-1)
+}
+
+function plural(count, word) {
+  return count === 1 ? word : `${word}s`
 }
 
 /** A state we have no wording for is still worth a sentence, never a placeholder. */

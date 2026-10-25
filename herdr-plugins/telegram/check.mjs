@@ -3,7 +3,12 @@
  */
 
 import { statSync } from 'node:fs'
-import { DEFAULT_COOLDOWN_SECONDS, DEFAULT_QUIET_WHEN_FOCUSED, DEFAULT_STATES } from './hook.mjs'
+import {
+  DEFAULT_COOLDOWN_SECONDS,
+  DEFAULT_QUIET_WHEN_FOCUSED,
+  DEFAULT_ROSTER_LIMIT,
+  DEFAULT_STATES,
+} from './hook.mjs'
 import { envFilePaths, envFlag, envNumber, loadDotEnv, stateDir } from './lib.mjs'
 
 loadDotEnv()
@@ -19,6 +24,9 @@ console.log(`state dir   ${stateDir()}`)
 console.log(`states      ${states || `${DEFAULT_STATES} (default)`}`)
 console.log(`quiet focus ${envFlag('TELEGRAM_QUIET_WHEN_FOCUSED', DEFAULT_QUIET_WHEN_FOCUSED)}`)
 console.log(`cooldown    ${envNumber('TELEGRAM_COOLDOWN_SECONDS', DEFAULT_COOLDOWN_SECONDS)}s`)
+console.log(
+  `roster      ${envNumber('TELEGRAM_ROSTER_LIMIT', DEFAULT_ROSTER_LIMIT)} agents (0 hides it)`,
+)
 
 for (const path of envFilePaths()) {
   console.log(`env file    ${path} [${describeFile(path)}]`)

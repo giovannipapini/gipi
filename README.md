@@ -78,9 +78,9 @@ herdr plugin list
 herdr plugin log list --plugin gipi.telegram
 ```
 
-| Plugin       | Description                                                                              |
-| ------------ | ---------------------------------------------------------------------------------------- |
-| **telegram** | Telegram message when an agent blocks or finishes, suppressed while that pane is focused |
+| Plugin       | Description                                                                                                                 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| **telegram** | Telegram message when an agent blocks or finishes, with a roster of the other agents, suppressed while that pane is focused |
 
 See [herdr-plugins/telegram/README.md](herdr-plugins/telegram/README.md) for config.
 

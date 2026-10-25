@@ -1,6 +1,6 @@
 id = "gipi.telegram"
 name = "Telegram"
-version = "0.2.0"
+version = "0.3.0"
 min_herdr_version = "0.9.5"
 description = "Send a Telegram message when an agent blocks or finishes, unless you are already looking at that pane"
 platforms = ["linux", "macos"]
