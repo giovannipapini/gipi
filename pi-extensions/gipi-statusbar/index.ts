@@ -6,6 +6,7 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 import { rawKeyHint } from '@earendil-works/pi-coding-agent'
 import { Key, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { formatTitle } from './title.js'
 
 type ThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
 
@@ -84,12 +85,7 @@ export default function extension(pi: ExtensionAPI) {
   }
 
   function updateTabTitle() {
-    if (sessionName) {
-      // Structured default names ("π · gipi · 20261025T0039") already read as a title.
-      setTitle?.(sessionName.startsWith('π') ? sessionName : `pi-agent (${sessionName})`)
-    } else {
-      setTitle?.(`pi-agent #${sessionId}`)
-    }
+    setTitle?.(formatTitle(sessionName, sessionId))
   }
 
   function requestGitRefresh(cwd: string) {
