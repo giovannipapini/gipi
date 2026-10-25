@@ -1,6 +1,6 @@
 {
   "name": "@giovannipapini/gipi-herdr-blocked",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Marks pi as blocked in Herdr while a blocking UI prompt awaits input",
   "keywords": [
     "pi-package"

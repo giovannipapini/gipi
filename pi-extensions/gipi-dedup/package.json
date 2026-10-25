@@ -1,6 +1,6 @@
 {
   "name": "@giovannipapini/gipi-dedup",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Deduplicates repeated read/edit tool output to keep the transcript quiet",
   "keywords": [
     "pi-package"

@@ -1,6 +1,6 @@
 {
   "name": "@giovannipapini/gipi-background",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Long-running background job manager for pi (tmux-style process pools)",
   "keywords": [
     "pi-package"

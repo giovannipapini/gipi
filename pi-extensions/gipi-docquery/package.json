@@ -1,6 +1,6 @@
 {
   "name": "@giovannipapini/gipi-docquery",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Queries library documentation through the Context7 API",
   "keywords": [
     "pi-package"

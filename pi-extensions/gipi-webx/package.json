@@ -1,6 +1,6 @@
 {
   "name": "@giovannipapini/gipi-webx",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Web search and crawl tools backed by Exa and Firecrawl",
   "keywords": [
     "pi-package"
