@@ -73,16 +73,16 @@ Herdr plugins are ordinary directories with a `herdr-plugin.toml` manifest. They
 packages and are wired in by path:
 
 ```bash
-herdr plugin link "$PWD/herdr-plugins/telegram-notify"
+herdr plugin link "$PWD/herdr-plugins/telegram"
 herdr plugin list
-herdr plugin log list --plugin gipi.telegram-notify
+herdr plugin log list --plugin gipi.telegram
 ```
 
-| Plugin              | Description                                                                  |
-| ------------------- | ---------------------------------------------------------------------------- |
-| **telegram-notify** | Telegram message when an agent blocks, suppressed while that pane is focused |
+| Plugin       | Description                                                                              |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| **telegram** | Telegram message when an agent blocks or finishes, suppressed while that pane is focused |
 
-See [herdr-plugins/telegram-notify/README.md](herdr-plugins/telegram-notify/README.md) for config.
+See [herdr-plugins/telegram/README.md](herdr-plugins/telegram/README.md) for config.
 
 ## Development
 

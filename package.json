@@ -29,7 +29,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc --noEmit",
-    "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm pack:check"
+    "test": "node --test",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm pack:check"
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",

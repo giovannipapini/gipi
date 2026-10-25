@@ -1,7 +1,7 @@
-# Telegram Notify (Herdr plugin)
+# Telegram (Herdr plugin)
 
-Sends a Telegram message when a Herdr agent reaches a configured state (default
-`blocked`), **unless you are already looking at that pane**.
+Sends a Telegram message when a Herdr agent blocks **or finishes** (default
+`blocked,done`), **unless you are already looking at that pane**.
 
 Herdr plugin event hooks are not attention-aware: every `pane.agent_status_changed`
 reaches the hook no matter which pane has focus. This plugin adds the gate itself,
@@ -16,8 +16,8 @@ while you are sitting in front of the prompt.
 ## Setup
 
 ```bash
-herdr plugin link /home/pi/dev/github/gipi/herdr-plugins/telegram-notify
-herdr plugin config-dir gipi.telegram-notify
+herdr plugin link /home/pi/dev/github/gipi/herdr-plugins/telegram
+herdr plugin config-dir gipi.telegram
 ```
 
 Put credentials in `<config dir>/.env` (owner-only; the plugin tightens the mode to
@@ -31,10 +31,11 @@ TELEGRAM_CHAT_ID=123456789
 Verify:
 
 ```bash
-herdr plugin action invoke check   --plugin gipi.telegram-notify   # masked config + perms
-herdr plugin action invoke preview --plugin gipi.telegram-notify   # print the message, send nothing
-herdr plugin action invoke test    --plugin gipi.telegram-notify   # one real message
-herdr plugin log list --plugin gipi.telegram-notify
+herdr plugin action invoke check   --plugin gipi.telegram   # masked config + perms
+herdr plugin action invoke preview --plugin gipi.telegram   # print the message, send nothing
+herdr plugin action invoke preview-done --plugin gipi.telegram  # same, for `done`
+herdr plugin action invoke test    --plugin gipi.telegram   # one real message
+herdr plugin log list --plugin gipi.telegram
 ```
 
 ## Message format
@@ -56,11 +57,25 @@ status: every skip path exits 0, so `succeeded` only means the hook ran.
 
 ## Settings
 
-| Env var                       | Default   | Meaning                                             |
-| ----------------------------- | --------- | --------------------------------------------------- |
-| `TELEGRAM_STATES`             | `blocked` | Comma list of states that notify (`blocked,done`)   |
-| `TELEGRAM_QUIET_WHEN_FOCUSED` | `1`       | Skip when the changed pane is the focused pane      |
-| `TELEGRAM_COOLDOWN_SECONDS`   | `120`     | Per-pane minimum gap between messages; `0` disables |
+| Env var                       | Default        | Meaning                                        |
+| ----------------------------- | -------------- | ---------------------------------------------- |
+| `TELEGRAM_STATES`             | `blocked,done` | Comma list of states that notify               |
+| `TELEGRAM_QUIET_WHEN_FOCUSED` | `1`            | Skip when the changed pane is the focused pane |
+| `TELEGRAM_COOLDOWN_SECONDS`   | `120`          | Per-pane, per-state minimum gap; `0` disables  |
+
+The cooldown is keyed by pane **and** state: an agent that finishes out of focus
+and asks for input again 10 seconds later still sends both messages.
+
+## Tests
+
+```bash
+pnpm test          # node --test: the rules in hook.mjs, no Herdr or network needed
+```
+
+The gating and wording live in `hook.mjs` as pure functions (state, clock and pane
+snapshot arrive as arguments), so `hook.test.mjs` covers them directly: default and
+parsed states, focus resolution, per-status cooldown, and the message body.
+`notify.mjs` is only the wiring to Herdr, Telegram and the state file.
 
 ## Credentials
 

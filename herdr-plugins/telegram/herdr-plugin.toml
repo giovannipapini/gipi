@@ -1,8 +1,8 @@
-id = "gipi.telegram-notify"
-name = "Telegram Notify"
-version = "0.1.0"
+id = "gipi.telegram"
+name = "Telegram"
+version = "0.2.0"
 min_herdr_version = "0.9.5"
-description = "Send a Telegram message when an agent blocks, unless you are already looking at that pane"
+description = "Send a Telegram message when an agent blocks or finishes, unless you are already looking at that pane"
 platforms = ["linux", "macos"]
 
 [[events]]
@@ -23,3 +23,8 @@ command = ["node", "check.mjs"]
 id = "preview"
 title = "Preview the blocked message"
 command = ["node", "notify.mjs", "--dry-run"]
+
+[[actions]]
+id = "preview-done"
+title = "Preview the finished message"
+command = ["node", "notify.mjs", "--dry-run", "--status", "done"]

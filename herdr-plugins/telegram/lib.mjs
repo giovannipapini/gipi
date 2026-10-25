@@ -1,5 +1,6 @@
 /**
- * Shared helpers for the gipi Herdr plugins.
+ * Infrastructure for the gipi Herdr plugins: environment files, the state file,
+ * the Telegram call and Herdr's pane snapshot. Policy lives in `hook.mjs`.
  *
  * Credentials live in `$HERDR_PLUGIN_CONFIG_DIR/.env` (managed by Herdr, outside
  * this repo) or in a development-only `.env` beside this file. Nothing here ever
@@ -8,12 +9,12 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const pluginRoot = dirname(fileURLToPath(import.meta.url))
+const pluginRoot = dirname(fileURLToPath(import.meta.url))
 
 const PRIVATE_MODE = 0o600
 
@@ -37,7 +38,7 @@ function dotEnvPaths() {
 }
 
 /** Keep credential files owner-only; fix a too-broad mode instead of trusting it. */
-export function ensurePrivate(path) {
+function ensurePrivate(path) {
   try {
     const mode = statSync(path).mode & 0o777
     if ((mode & 0o077) !== 0) {
@@ -104,7 +105,7 @@ export function readJsonEnv(name) {
 export function stateDir() {
   if (process.env.HERDR_PLUGIN_STATE_DIR) return process.env.HERDR_PLUGIN_STATE_DIR
   const base = process.env.XDG_STATE_HOME ?? join(homedir(), '.local', 'state')
-  return join(base, 'gipi', 'herdr-telegram-notify')
+  return join(base, 'gipi', 'herdr-telegram')
 }
 
 export function readState() {
@@ -162,8 +163,4 @@ export function paneInfo(paneId) {
   } catch {
     return undefined
   }
-}
-
-export function exists(path) {
-  return existsSync(path)
 }
