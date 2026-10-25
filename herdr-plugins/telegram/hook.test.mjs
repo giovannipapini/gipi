@@ -8,14 +8,20 @@ import { test } from 'node:test'
 import {
   DEFAULT_STATES,
   formatMessage,
+  formatSnapshot,
   isFocusedPane,
+  isRetryable,
   markNotified,
   markSeen,
   notifyAs,
+  overflowsMessage,
   parseStates,
   recentlyNotified,
+  replyTarget,
+  retryDelayMs,
   rosterFromSnapshot,
   rosterLines,
+  silentFor,
 } from './hook.mjs'
 
 const pane = {
@@ -239,12 +245,51 @@ test('the roster is the other agents, most urgent first', () => {
   )
 })
 
-test('a pane id is shown only when its tab holds more than one pane', () => {
+test('a pane id is shown only where the location alone repeats', () => {
   assert.deepEqual(rosterLines(rosterFromSnapshot(snapshot, { excludePaneId: 'w1:p9' })), [
     '── other agents · 3 ──',
-    '⚠️ claude · alpha · tab 2 · w1:p2',
-    '⚙️ pi · gamma · tab 2 · w1:p3',
+    '⚠️ claude · alpha · tab 2',
+    '⚙️ pi · gamma · tab 2',
     '💤 pi · beta · tab 1',
+  ])
+})
+
+test('three agents on the same project in different workspaces are told apart by pane id', () => {
+  const twins = {
+    tabs: [
+      { tab_id: 'wH:t1', label: '1', number: 1, pane_count: 1 },
+      { tab_id: 'wK:t1', label: '1', number: 1, pane_count: 1 },
+      { tab_id: 'wJ:t1', label: '1', number: 1, pane_count: 1 },
+    ],
+    panes: [
+      {
+        pane_id: 'wH:p1',
+        agent: 'pi',
+        agent_status: 'working',
+        cwd: '/home/pi/dev/dotfiles',
+        tab_id: 'wH:t1',
+      },
+      {
+        pane_id: 'wK:p1',
+        agent: 'pi',
+        agent_status: 'working',
+        cwd: '/home/pi/dev/dotfiles',
+        tab_id: 'wK:t1',
+      },
+      {
+        pane_id: 'wJ:p1',
+        agent: 'claude',
+        agent_status: 'idle',
+        cwd: '/home/pi/dev/dotfiles',
+        tab_id: 'wJ:t1',
+      },
+    ],
+  }
+  assert.deepEqual(rosterLines(rosterFromSnapshot(twins, {})), [
+    '── other agents · 3 ──',
+    '⚙️ pi · dotfiles · tab 1 · wH:p1',
+    '⚙️ pi · dotfiles · tab 1 · wK:p1',
+    '💤 claude · dotfiles · tab 1 · wJ:p1',
   ])
 })
 
@@ -298,4 +343,73 @@ test('with nobody waiting the first line stays inside the 29-character budget', 
   const text = formatMessage({ status: 'blocked', pane, context, paneId: 'w1:p1', others })
   assert.equal(text.split('\n')[0], '⚠️ pi is waiting for you')
   assert.ok(text.split('\n')[0].length < 29)
+})
+
+test('only a blocked agent buzzes the phone', () => {
+  assert.equal(silentFor('blocked'), false)
+  assert.equal(silentFor('done'), true)
+  assert.equal(silentFor('idle'), true)
+  assert.equal(silentFor('paused'), true)
+})
+
+test('a message over the Telegram cap goes as a document instead', () => {
+  assert.equal(overflowsMessage('x'.repeat(4096)), false)
+  assert.equal(overflowsMessage('x'.repeat(4097)), true)
+  assert.equal(overflowsMessage('xxxx', 4), false)
+  assert.equal(overflowsMessage('xxxxx', 4), true)
+})
+
+test('a rate limit or a 5xx retries, a rejected token does not', () => {
+  assert.equal(isRetryable({ status: 429 }), true)
+  assert.equal(isRetryable({ status: 503 }), true)
+  assert.equal(isRetryable({ network: true }), true)
+  assert.equal(isRetryable({ status: 400 }), false)
+  assert.equal(isRetryable({ status: 401 }), false)
+  assert.equal(isRetryable({ status: 403 }), false)
+})
+
+test('the wait honours retry_after, else backs off from one second', () => {
+  assert.equal(retryDelayMs({ attempt: 1, retryAfterSeconds: 7 }), 7_000)
+  assert.equal(retryDelayMs({ attempt: 1 }), 1_000)
+  assert.equal(retryDelayMs({ attempt: 2 }), 2_000)
+  assert.equal(retryDelayMs({ attempt: 3 }), 4_000)
+  assert.equal(retryDelayMs({ attempt: 1, retryAfterSeconds: 0 }), 1_000)
+})
+
+test('a sent message becomes the next one’s reply target', () => {
+  const sent = markNotified({ status: 'blocked', now: NOW, messageId: 41, threadId: 7 })
+  assert.equal(replyTarget(sent), 41)
+  assert.deepEqual(
+    { lastMessageId: sent.lastMessageId, lastThreadId: sent.lastThreadId },
+    { lastMessageId: 41, lastThreadId: 7 },
+  )
+  assert.equal(replyTarget(undefined), undefined)
+  assert.equal(replyTarget({ blocked: 1 }), undefined)
+})
+
+test('a status change keeps the thread it replies into', () => {
+  const sent = markNotified({ status: 'blocked', now: NOW, messageId: 41 })
+  const seen = markSeen({ paneState: sent, status: 'working', now: NOW + 1 })
+  assert.equal(replyTarget(seen), 41)
+  assert.equal(seen.lastStatus, 'working')
+})
+
+test('the roster label is the caller’s, so a snapshot is not "other"', () => {
+  const entries = rosterFromSnapshot(snapshot, { excludePaneId: 'w1:p9' })
+  assert.equal(rosterLines(entries, { label: 'agent' })[0], '── agents · 3 ──')
+  assert.equal(rosterLines(entries)[0], '── other agents · 3 ──')
+  assert.equal(rosterLines(entries, { header: false })[0], '⚠️ claude · alpha · tab 2')
+})
+
+test('a snapshot is the whole session, most urgent first', () => {
+  const text = formatSnapshot(snapshot, { limit: 2 }).split('\n')
+  assert.equal(text[0], '📋 4 agents · 1 waiting')
+  assert.equal(text[1], '⚠️ claude · alpha · tab 2')
+  assert.equal(text[3], '+2 more')
+  assert.equal(text.includes('──'), false, 'the first line already counts them')
+})
+
+test('an empty session says so instead of sending an empty list', () => {
+  assert.equal(formatSnapshot({ panes: [], tabs: [] }), '💤 no agents running')
+  assert.equal(formatSnapshot(undefined), '💤 no agents running')
 })

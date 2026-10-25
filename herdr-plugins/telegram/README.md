@@ -4,9 +4,10 @@ Sends a Telegram message when a Herdr agent blocks **or finishes** (default
 `blocked,done`), **unless you are already looking at that pane** — with a roster of the
 other agents below it, most urgent first.
 
-Herdr plugin event hooks are not attention-aware: every `pane.agent_status_changed`
-reaches the hook no matter which pane has focus. This plugin adds the gate itself,
-plus a cooldown so a prompt that re-blocks in a loop cannot spam.
+A block buzzes the phone; a finished turn arrives silently. Each pane's messages chain as
+replies, so one pane reads as one thread. Herdr plugin event hooks are not attention-aware:
+every `pane.agent_status_changed` reaches the hook no matter which pane has focus. This
+plugin adds the gate itself, plus a cooldown so a prompt that re-blocks in a loop cannot spam.
 
 ## Why not the upstream example
 
@@ -33,11 +34,18 @@ Verify:
 
 ```bash
 herdr plugin action invoke check   --plugin gipi.telegram   # masked config, perms, turn-end mapping
+herdr plugin action invoke verify  --plugin gipi.telegram   # + getMe/getChat round trip
 herdr plugin action invoke preview --plugin gipi.telegram   # print the message, send nothing
 herdr plugin action invoke preview-done --plugin gipi.telegram  # same, for `done`
+herdr plugin action invoke preview-snapshot --plugin gipi.telegram  # the session message
+herdr plugin action invoke snapshot --plugin gipi.telegram  # send the session now
 herdr plugin action invoke test    --plugin gipi.telegram   # one real message
 herdr plugin log list --plugin gipi.telegram
 ```
+
+The startup hook runs `getMe` + `getChat` on every server start and toasts on failure, so a
+revoked token or a wrong chat id surfaces at boot rather than at the next blocked agent. It
+sends nothing unless `TELEGRAM_STARTUP_NOTICE=1`.
 
 ## Message format
 
@@ -97,6 +105,23 @@ why, including a status the settings do not notify on (`skip: idle is not a noti
 stderr says `roster unavailable`, so a message without a list is never mistaken for a
 session with no other agents.
 
+## Delivery
+
+Four rules decide how a message leaves the machine, all of them testable without a network:
+
+| Rule      | Behaviour                                                                                     |
+| --------- | --------------------------------------------------------------------------------------------- |
+| Loudness  | `blocked` buzzes; everything else is sent with `disable_notification`                         |
+| Threading | Each message replies to the pane's previous one, so a pane is a thread                        |
+| Length    | Over 4096 characters it goes as a `.txt` document, never truncated                            |
+| Failure   | Rate limits, 5xx and transport errors retry (honouring `retry_after`); anything else is final |
+
+A reply whose earlier message was deleted falls back to a plain send — losing the thread is
+cheaper than losing the notification. A send that still fails after retries is logged **and**
+raised as a local `herdr notification show` toast, because the message that failed was the only
+thing that would have told you the notifier was broken. A rejected token (`401`/`403`) is never
+retried: it would only hide the problem behind a delay.
+
 ## Settings
 
 | Env var                       | Default        | Meaning                                        |
@@ -105,6 +130,9 @@ session with no other agents.
 | `TELEGRAM_QUIET_WHEN_FOCUSED` | `1`            | Skip when the changed pane is the focused pane |
 | `TELEGRAM_COOLDOWN_SECONDS`   | `120`          | Per-pane, per-state minimum gap; `0` disables  |
 | `TELEGRAM_ROSTER_LIMIT`       | `5`            | Roster lines per message; `0` hides the block  |
+| `TELEGRAM_SILENT_NONBLOCKED`  | `1`            | Silent for anything but `blocked`              |
+| `TELEGRAM_MESSAGE_THREAD_ID`  | _unset_        | Forum topic to post into                       |
+| `TELEGRAM_STARTUP_NOTICE`     | `0`            | Also send a session summary on server start    |
 
 The cooldown is keyed by pane **and** state: an agent that finishes out of focus
 and asks for input again 10 seconds later still sends both messages.
@@ -118,6 +146,30 @@ start, a reload — says nothing. The plugin keeps each pane's last status in it
 file to make that distinction; listing `idle` in `TELEGRAM_STATES` opts back in to raw
 idle transitions (`💤 … went idle`).
 
+## Security
+
+A plugin is ordinary code with your full environment and the whole Herdr CLI, and Telegram is
+a third party that stores what you send it. The choices that follow from that:
+- **The token never leaves the config dir.** It is read from
+  `$HERDR_PLUGIN_CONFIG_DIR/.env`, which Herdr creates outside this repo and the plugin keeps at
+  `600`. Nothing in `HERDR_PLUGIN_ROOT` is durable — a GitHub-installed root is a managed
+  checkout that gets replaced.
+- **No token in any output.** The Telegram endpoint embeds it in the URL path and `fetch` quotes
+  URLs in its errors, so every thrown or printed message goes through `redact()`. If you add an
+  HTTP client of your own, silence its request logging: `httpx` and friends log full URLs at
+  `INFO`.
+- **Plain text only.** Pane titles and cwds are untrusted strings; sent as Markdown or HTML, a
+  `_`, `*` or `<` in a title either breaks the message or gets interpreted. No `parse_mode` is set
+  on purpose.
+- **The notifier is send-only.** Nothing here listens for inbound updates, so there is no bot
+  surface to authorize and no `callback_data` to validate. Anything that answers a message needs
+  a long-lived poller, which a plugin manifest cannot own — that is a separate design, and it has
+  to allowlist both `chat.id` and `from.id`.
+- **Review before linking.** `herdr plugin install` previews the commands a plugin will run; it
+  does not sandbox them. Pin `--ref` for GitHub installs and update deliberately.
+- **Rotate by revoking.** `/revoke` in BotFather, update the `.env`, and the next hook picks it
+  up. Never paste a token into a chat, an issue or a commit.
+
 ## Tests
 
 ```bash
@@ -127,8 +179,9 @@ pnpm test          # node --test: the rules in hook.mjs, no Herdr or network nee
 The gating and wording live in `hook.mjs` as pure functions (state, clock and pane
 snapshot arrive as arguments), so `hook.test.mjs` covers them directly: default and
 parsed states, turn-end mapping (`done`, and `working` → `idle`), focus resolution,
-per-status cooldown, the message body, and the roster (urgency order, trigger-pane
-exclusion, shell panes, the cap and its `+N more`).
+per-status cooldown, the message body, the roster (urgency order, trigger-pane
+exclusion, shell panes, the cap and its `+N more`), and now loudness, the length
+threshold, retry classification and backoff, reply chaining, and the session message.
 `notify.mjs` is only the wiring to Herdr, Telegram and the state file.
 
 ## Credentials

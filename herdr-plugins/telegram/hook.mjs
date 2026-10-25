@@ -23,6 +23,18 @@ export const DEFAULT_QUIET_WHEN_FOCUSED = true
 /** Roster lines shown by default; `0` leaves the roster out entirely. */
 export const DEFAULT_ROSTER_LIMIT = 5
 
+/** A finished turn is worth seeing, not worth waking up for. */
+export const DEFAULT_SILENT_NONBLOCKED = true
+
+/** Telegram's hard cap on `sendMessage` text, in UTF-16 units. */
+export const MAX_MESSAGE_LENGTH = 4096
+
+/** Attempts per request, including the first; only transient failures retry. */
+export const DEFAULT_MAX_ATTEMPTS = 3
+
+/** HTTP statuses that are worth another try; everything else is final. */
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
+
 /** Beyond this a terminal title stops being a hint and becomes noise. */
 const TITLE_LIMIT = 80
 
@@ -103,13 +115,54 @@ export function markSeen({ paneState, status, now }) {
   return { ...(paneState ?? {}), lastStatus: status, lastSeenAt: now }
 }
 
-/** The pane's state after a message, keeping every other status' timestamp. */
-export function markNotified({ paneState, status, now }) {
+/**
+ * The pane's state after a message, keeping every other status' timestamp. The
+ * message id becomes the next message's reply target, so one pane reads as one
+ * thread in the chat instead of a wall of unrelated messages.
+ */
+export function markNotified({ paneState, status, now, messageId, threadId }) {
   const next = { ...(paneState ?? {}) }
   // Releases before 0.2 kept a single `lastNotifiedAt` per pane; drop it.
   delete next.lastNotifiedAt
   next[status] = now
+  if (messageId !== undefined) next.lastMessageId = messageId
+  if (threadId !== undefined) next.lastThreadId = threadId
   return next
+}
+
+/** The message this pane should reply to, if any of its earlier messages landed. */
+export function replyTarget(paneState) {
+  return typeof paneState?.lastMessageId === 'number' ? paneState.lastMessageId : undefined
+}
+
+/**
+ * Whether the phone should buzz. Only `blocked` is stuck until you answer; the
+ * rest is worth seeing when you next look at the chat.
+ */
+export function silentFor(status) {
+  return status !== 'blocked'
+}
+
+/**
+ * Whether the text has to go as a document. Telegram rejects anything past 4096
+ * units outright, and truncating a roster mid-line loses the agent it named.
+ */
+export function overflowsMessage(text, limit = MAX_MESSAGE_LENGTH) {
+  return String(text ?? '').length > limit
+}
+
+/** A network failure or a status worth another attempt; 401/403/400 are final. */
+export function isRetryable({ status, network = false } = {}) {
+  return network || RETRYABLE_STATUS.has(status)
+}
+
+/**
+ * Wait before attempt `attempt + 1`: Telegram's own `retry_after` when it gave
+ * one, otherwise 1s, 2s, 4s. Deliberately uncapped — a rate limit is a fact.
+ */
+export function retryDelayMs({ attempt, retryAfterSeconds }) {
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) return retryAfterSeconds * 1000
+  return 2 ** Math.max(0, attempt - 1) * 1000
 }
 
 /** The message body: headline, where to look, and what the pane is showing. */
@@ -143,7 +196,7 @@ export function formatMessage({
 export function rosterFromSnapshot(snapshot, { excludePaneId } = {}) {
   const tabs = new Map((snapshot?.tabs ?? []).map((tab) => [tab.tab_id, tab]))
 
-  return (snapshot?.panes ?? [])
+  const entries = (snapshot?.panes ?? [])
     .filter((pane) => isAgentPane(pane) && pane.pane_id !== excludePaneId)
     .map((pane) => {
       const tab = tabs.get(pane.tab_id)
@@ -156,23 +209,57 @@ export function rosterFromSnapshot(snapshot, { excludePaneId } = {}) {
         tabLabel: tab?.label,
         tabNumber: tab?.number ?? 0,
         paneId: pane.pane_id,
-        // A tab id only earns its space when the tab holds more than one pane.
-        sharedTab: (tab?.pane_count ?? 1) > 1,
       }
     })
     .sort((a, b) => rosterRank(a.status) - rosterRank(b.status) || a.tabNumber - b.tabNumber)
+
+  // A location that repeats cannot identify a pane: three agents on the same
+  // project in different workspaces render identically without the pane id.
+  const locations = new Map()
+  for (const entry of entries) {
+    const key = locationKey(entry)
+    locations.set(key, (locations.get(key) ?? 0) + 1)
+  }
+
+  return entries.map((entry) => ({ ...entry, ambiguous: locations.get(locationKey(entry)) > 1 }))
+}
+
+/** Project plus tab, the part of a roster line that is not the agent. */
+function locationKey({ project, tabLabel }) {
+  return JSON.stringify([project ?? '', tabLabel ?? ''])
 }
 
 /** The roster block, or nothing when it is switched off or empty. */
-export function rosterLines(entries, { limit = DEFAULT_ROSTER_LIMIT } = {}) {
+export function rosterLines(
+  entries,
+  { limit = DEFAULT_ROSTER_LIMIT, label = 'other agent', header = true } = {},
+) {
   if (limit <= 0 || entries.length === 0) return []
 
   const shown = entries.slice(0, limit)
   const hidden = entries.length - shown.length
-  const header = `── other ${plural(entries.length, 'agent')} · ${entries.length} ──`
+  const title = header ? [`── ${plural(entries.length, label)} · ${entries.length} ──`] : []
 
   // Never truncate silently: the remainder is named, not dropped.
-  return [header, ...shown.map(rosterLine), ...(hidden > 0 ? [`+${hidden} more`] : [])]
+  return [...title, ...shown.map(rosterLine), ...(hidden > 0 ? [`+${hidden} more`] : [])]
+}
+
+/**
+ * The whole session in one message, for the `snapshot` action: what you would
+ * ask for on the phone when the notification was about one pane and you want
+ * to know what the rest are doing.
+ */
+export function formatSnapshot(snapshot, { limit = DEFAULT_ROSTER_LIMIT } = {}) {
+  const entries = rosterFromSnapshot(snapshot, {})
+  if (entries.length === 0) return '💤 no agents running'
+
+  const waiting = entries.filter((entry) => entry.status === 'blocked').length
+  const agents = plural(entries.length, 'agent')
+  return [
+    `📋 ${entries.length} ${agents}${waiting > 0 ? ` · ${waiting} waiting` : ''}`,
+    // the first line already counts them; a second header would repeat it
+    ...rosterLines(entries, { limit, header: false }),
+  ].join('\n')
 }
 
 /**
@@ -184,12 +271,12 @@ function waitingSuffix(others) {
   return waiting > 0 ? ` · ${waiting} waiting` : ''
 }
 
-function rosterLine({ agent, status, project, tabLabel, paneId, sharedTab }) {
+function rosterLine({ agent, status, project, tabLabel, paneId, ambiguous }) {
   const icon = ROSTER[status]?.icon ?? ROSTER_FALLBACK.icon
   const where = [
     project,
     tabLabel === undefined ? undefined : `tab ${tabLabel}`,
-    sharedTab ? paneId : undefined,
+    ambiguous ? paneId : undefined,
   ].filter(Boolean)
 
   return [`${icon} ${agent}`, ...where].join(' · ')

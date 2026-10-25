@@ -1,9 +1,12 @@
 id = "gipi.telegram"
 name = "Telegram"
-version = "0.3.0"
+version = "0.4.0"
 min_herdr_version = "0.9.5"
 description = "Send a Telegram message when an agent blocks or finishes, unless you are already looking at that pane"
 platforms = ["linux", "macos"]
+
+[[startup]]
+command = ["node", "startup.mjs"]
 
 [[events]]
 on = "pane.agent_status_changed"
@@ -20,6 +23,16 @@ title = "Show Telegram notify configuration"
 command = ["node", "check.mjs"]
 
 [[actions]]
+id = "verify"
+title = "Verify the Telegram token and chat"
+command = ["node", "check.mjs", "--verify"]
+
+[[actions]]
+id = "snapshot"
+title = "Send the current session to Telegram"
+command = ["node", "notify.mjs", "--snapshot"]
+
+[[actions]]
 id = "preview"
 title = "Preview the blocked message"
 command = ["node", "notify.mjs", "--dry-run"]
@@ -28,3 +41,8 @@ command = ["node", "notify.mjs", "--dry-run"]
 id = "preview-done"
 title = "Preview the finished message"
 command = ["node", "notify.mjs", "--dry-run", "--status", "done"]
+
+[[actions]]
+id = "preview-snapshot"
+title = "Preview the session message"
+command = ["node", "notify.mjs", "--dry-run", "--snapshot"]
