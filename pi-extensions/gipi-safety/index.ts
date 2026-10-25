@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 import { isToolCallEventType } from '@earendil-works/pi-coding-agent'
+import { Key } from '@earendil-works/pi-tui'
 import { notifyStuck, resetStuckNotified } from './notify-stuck.js'
 import type { GuardDecision, Plugin } from './plugin.js'
 import { safeRulesPlugin } from './plugin-safe-rules.js'
@@ -10,6 +11,14 @@ import { confirmBash, type Decision } from './ui.js'
 
 const BLOCKED_REASON = 'Blocked by user'
 const BLOCKED_NO_UI = 'Tool confirmation active: cannot confirm in non-UI mode'
+
+// GIPI_SAFETY=0|false|off|no starts the session with the guard disabled.
+const ENV_KEY = 'GIPI_SAFETY'
+const DISABLED_VALUES = new Set(['0', 'false', 'off', 'no'])
+
+/** Runtime switch for confirmations and plugin guards. Hard blocks ignore it. */
+const envDisabled = DISABLED_VALUES.has((process.env[ENV_KEY] ?? '').trim().toLowerCase())
+let enabled = !envDisabled
 
 const PLUGINS: Plugin[] = [safeRulesPlugin, substitutionPlugin].sort(
   (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
@@ -65,8 +74,41 @@ export default function (pi: ExtensionAPI) {
   const FILE_PIPELINE_TOOLS = new Set(['read', 'edit'])
 
   function updateStatus(ctx: ExtensionContext) {
-    ctx.ui.setStatus('gipi-safety', 'safety ✓')
+    ctx.ui.setStatus('gipi-safety', enabled ? 'safety ✓' : 'safety off')
   }
+
+  function statusMessage(): string {
+    return enabled
+      ? 'gipi-safety on — dangerous commands prompt, plugin guards active'
+      : 'gipi-safety off — confirmations and plugin guards skipped; secret and repo paths still blocked'
+  }
+
+  function setEnabled(next: boolean, ctx: ExtensionContext) {
+    enabled = next
+    updateStatus(ctx)
+    ctx.ui.notify(statusMessage(), enabled ? 'info' : 'warning')
+  }
+
+  pi.registerCommand('safety', {
+    description: 'Show or change the gipi-safety guard (on | off | status)',
+    handler: async (args, ctx) => {
+      const arg = args.trim().toLowerCase()
+      if (arg === 'status') {
+        ctx.ui.notify(statusMessage(), enabled ? 'info' : 'warning')
+        return
+      }
+      if (arg && arg !== 'on' && arg !== 'off' && arg !== 'toggle') {
+        ctx.ui.notify(`Unknown argument "${args.trim()}" — use on, off, or status`, 'error')
+        return
+      }
+      setEnabled(arg === 'on' ? true : arg === 'off' ? false : !enabled, ctx)
+    },
+  })
+
+  pi.registerShortcut(Key.alt('s'), {
+    description: 'Toggle gipi-safety guard (/safety)',
+    handler: async (ctx) => setEnabled(!enabled, ctx),
+  })
 
   pi.on('before_agent_start', async (event) => {
     const claimed = new Set<string>()
@@ -84,6 +126,12 @@ export default function (pi: ExtensionAPI) {
 
   pi.on('session_start', async (_event, ctx) => {
     updateStatus(ctx)
+    if (envDisabled && !enabled) {
+      ctx.ui.notify(
+        `gipi-safety off (${ENV_KEY}=${process.env[ENV_KEY]}) — /safety on enables it for this session`,
+        'warning',
+      )
+    }
   })
 
   pi.on('session_shutdown', async (_event, ctx) => {
@@ -100,6 +148,8 @@ export default function (pi: ExtensionAPI) {
     const isKillAction =
       isToolCallEventType('bash_async_manage', event) && event.input.action === 'kill'
 
+    // Hard blocks are checked before the runtime switch: they protect secrets and
+    // repo state and have no interactive override, so disabling the guard keeps them.
     const rawFileInput = fileConfig ? stringInput(toolInput, 'path') : undefined
     if (rawFileInput && isBlockedPath(resolveToolPath(ctx, rawFileInput))) {
       return {
@@ -107,6 +157,8 @@ export default function (pi: ExtensionAPI) {
         reason: `Blocked path: ${rawFileInput} — modifying this file risks secrets or data loss`,
       }
     }
+
+    if (!enabled) return
 
     if (FILE_PIPELINE_TOOLS.has(event.toolName)) {
       const rawPath = isToolCallEventType('edit', event)

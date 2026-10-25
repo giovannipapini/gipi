@@ -48,6 +48,18 @@ Published packages: `gipi-background`, `gipi-dedup`, `gipi-docquery`, `gipi-herd
 `gipi-themes`. Each is bundled into a single file, declares only the dependencies it uses, and
 exposes `pi.extensions` (or `pi.themes`) pointing at its build output.
 
+### Disabling gipi-safety
+
+`gipi-safety` prompts before destructive commands and runs plugin rules (safe-read
+allowlisting, tool substitutions). Turn it off per session:
+- `/safety off` — also `/safety on`, `/safety status`, `/safety toggle`; `alt+s` toggles.
+  The status bar shows `safety off`.
+- `export GIPI_SAFETY=0` (`false`/`off`/`no` also work) starts every session disabled.
+  `/safety on` re-enables the current session.
+
+Disabled means no confirmations and no plugin guards. Writes to `.env`, `.git/`,
+`node_modules/`, `.venv/` and `venv/` stay hard-blocked — those have no interactive override.
+
 ### Whole repo
 
 ```bash
