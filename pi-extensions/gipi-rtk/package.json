@@ -1,6 +1,6 @@
 {
   "name": "@giovannipapini/gipi-rtk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Proxies eligible bash commands through rtk for large output token savings",
   "keywords": [
     "pi-package"
