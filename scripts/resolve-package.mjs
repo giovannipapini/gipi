@@ -3,8 +3,8 @@
 // Tag convention is `<package-name>@<version>`, where `<package-name>` is the
 // scoped name without the `@giovannipapini/` prefix, e.g.:
 //
-//   gipi-rtk@0.1.0     -> packages/gipi-rtk
-//   gipi-themes@0.1.0  -> packages/gipi-themes
+//   gipi-rtk@0.1.0     -> pi-extensions/gipi-rtk
+//   gipi-themes@0.1.0  -> pi-extensions/gipi-themes
 //
 // Resolution is by manifest name rather than directory name, so a package can
 // live anywhere in the workspace without teaching this script about it.
@@ -20,10 +20,10 @@ if (!shortName) {
   process.exit(2)
 }
 
-const candidates = existsSync('packages')
-  ? readdirSync('packages', { withFileTypes: true })
+const candidates = existsSync('pi-extensions')
+  ? readdirSync('pi-extensions', { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .map((entry) => join('packages', entry.name))
+      .map((entry) => join('pi-extensions', entry.name))
   : []
 
 const want = `${SCOPE}/${shortName}`

@@ -1,8 +1,17 @@
 # gipi
 
-Custom [pi](https://pi.dev/) extensions and themes for my daily driver setup.
+Custom [pi](https://pi.dev/) extensions, themes, and [Herdr](https://herdr.dev/) plugins for my
+daily driver setup.
 
-## Extensions
+## Layout
+
+| Directory        | What lives there                                                     |
+| ---------------- | -------------------------------------------------------------------- |
+| `pi-extensions/` | pi extensions and themes — publishable npm packages, one per folder  |
+| `herdr-plugins/` | Herdr plugins — not npm packages, installed with `herdr plugin link` |
+| `lib/`           | shared TypeScript helpers, bundled into each extension               |
+
+## pi extensions
 
 | Extension              | Description                                                                                                                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -52,11 +61,28 @@ several extensions at once, but npm is what release tags publish.
 ### Or symlink individual extensions
 
 ```bash
-ln -s "$PWD/packages/gipi-safety" ~/.pi/agent/extensions/
-ln -s "$PWD/packages/gipi-statusbar" ~/.pi/agent/extensions/
+ln -s "$PWD/pi-extensions/gipi-safety" ~/.pi/agent/extensions/
+ln -s "$PWD/pi-extensions/gipi-statusbar" ~/.pi/agent/extensions/
 ```
 
 Then run `/reload` in pi or restart.
+
+## Herdr plugins
+
+Herdr plugins are ordinary directories with a `herdr-plugin.toml` manifest. They are not npm
+packages and are wired in by path:
+
+```bash
+herdr plugin link "$PWD/herdr-plugins/telegram-notify"
+herdr plugin list
+herdr plugin log list --plugin gipi.telegram-notify
+```
+
+| Plugin              | Description                                                                  |
+| ------------------- | ---------------------------------------------------------------------------- |
+| **telegram-notify** | Telegram message when an agent blocks, suppressed while that pane is focused |
+
+See [herdr-plugins/telegram-notify/README.md](herdr-plugins/telegram-notify/README.md) for config.
 
 ## Development
 
@@ -69,6 +95,9 @@ pnpm lint:fix    # Auto-fix
 pnpm pack:check  # assert each tarball ships only what its "files" field allows
 pnpm verify      # lint + typecheck + build + pack:check (what CI runs)
 ```
+
+`pnpm verify` covers `pi-extensions/` only; Herdr plugins are plain `.mjs` and ship no build step
+(Biome still formats and lints them).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev and release guide.
 

@@ -9,3 +9,6 @@
 # pnpm / Node
 node_modules/
 dist/
+
+# Herdr plugin credentials (dev fallback; production lives in the Herdr config dir)
+herdr-plugins/**/.env

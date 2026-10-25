@@ -24,9 +24,9 @@ const ALWAYS_ALLOWED = new Set([
 
 const RELATIVE_IMPORT = /from\s+["']\.{1,2}\//
 
-const dirs = readdirSync('packages', { withFileTypes: true })
+const dirs = readdirSync('pi-extensions', { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
-  .map((entry) => join('packages', entry.name))
+  .map((entry) => join('pi-extensions', entry.name))
   .filter((dir) => existsSync(join(dir, 'package.json')))
   .sort()
 

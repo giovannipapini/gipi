@@ -1,7 +1,7 @@
 {
-  "name": "@giovannipapini/gipi-themes",
-  "version": "0.1.1",
-  "description": "pi themes used by gipi (neon-tokyo)",
+  "name": "@giovannipapini/gipi-namesession",
+  "version": "0.1.0",
+  "description": "Auto-names pi sessions with short lowercase names via the LLM",
   "keywords": [
     "pi-package"
   ],
@@ -9,20 +9,20 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/giovannipapini/gipi.git",
-    "directory": "packages/gipi-themes"
+    "directory": "pi-extensions/gipi-namesession"
   },
   "bugs": "https://github.com/giovannipapini/gipi/issues",
-  "homepage": "https://github.com/giovannipapini/gipi/tree/main/packages/gipi-themes#readme",
+  "homepage": "https://github.com/giovannipapini/gipi/tree/main/pi-extensions/gipi-namesession#readme",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "files": [
-    "themes"
+    "dist"
   ],
   "pi": {
-    "themes": [
-      "./themes"
+    "extensions": [
+      "./dist"
     ]
   },
   "publishConfig": {
@@ -32,5 +32,8 @@
   },
   "scripts": {
     "prepublishOnly": "node -e \"process.env.CI === 'true' || (console.error('publish only from CI'), process.exit(1))\""
+  },
+  "peerDependencies": {
+    "typebox": "*"
   }
 }

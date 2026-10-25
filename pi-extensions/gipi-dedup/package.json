@@ -1,7 +1,7 @@
 {
-  "name": "@giovannipapini/gipi-safety",
+  "name": "@giovannipapini/gipi-dedup",
   "version": "0.1.0",
-  "description": "Interactive tool confirmation guard with plugin rules and substitutions",
+  "description": "Deduplicates repeated read/edit tool output to keep the transcript quiet",
   "keywords": [
     "pi-package"
   ],
@@ -9,10 +9,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/giovannipapini/gipi.git",
-    "directory": "packages/gipi-safety"
+    "directory": "pi-extensions/gipi-dedup"
   },
   "bugs": "https://github.com/giovannipapini/gipi/issues",
-  "homepage": "https://github.com/giovannipapini/gipi/tree/main/packages/gipi-safety#readme",
+  "homepage": "https://github.com/giovannipapini/gipi/tree/main/pi-extensions/gipi-dedup#readme",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -34,7 +34,6 @@
     "prepublishOnly": "node -e \"process.env.CI === 'true' || (console.error('publish only from CI'), process.exit(1))\""
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
+    "@earendil-works/pi-coding-agent": "*"
   }
 }

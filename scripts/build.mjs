@@ -22,8 +22,10 @@ const jsToTs = {
   },
 }
 
-const entries = readdirSync('packages', { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && existsSync(join('packages', entry.name, 'index.ts')))
+const entries = readdirSync('pi-extensions', { withFileTypes: true })
+  .filter(
+    (entry) => entry.isDirectory() && existsSync(join('pi-extensions', entry.name, 'index.ts')),
+  )
   .map((entry) => entry.name)
   .sort()
 
@@ -33,10 +35,10 @@ if (entries.length === 0) {
 }
 
 for (const name of entries) {
-  const outdir = join('packages', name, 'dist')
+  const outdir = join('pi-extensions', name, 'dist')
   rmSync(outdir, { recursive: true, force: true })
   await build({
-    entryPoints: [join('packages', name, 'index.ts')],
+    entryPoints: [join('pi-extensions', name, 'index.ts')],
     outfile: join(outdir, 'index.js'),
     bundle: true,
     format: 'esm',
@@ -47,5 +49,5 @@ for (const name of entries) {
     logLevel: 'warning',
     plugins: [jsToTs],
   })
-  console.log(`built packages/${name}/dist/index.js`)
+  console.log(`built pi-extensions/${name}/dist/index.js`)
 }

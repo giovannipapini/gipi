@@ -1,7 +1,7 @@
 {
-  "name": "@giovannipapini/gipi-spinner",
+  "name": "@giovannipapini/gipi-herdr-blocked",
   "version": "0.1.0",
-  "description": "Animated spinner with witty verbs during tool execution",
+  "description": "Marks pi as blocked in Herdr while a blocking UI prompt awaits input",
   "keywords": [
     "pi-package"
   ],
@@ -9,10 +9,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/giovannipapini/gipi.git",
-    "directory": "packages/gipi-spinner"
+    "directory": "pi-extensions/gipi-herdr-blocked"
   },
   "bugs": "https://github.com/giovannipapini/gipi/issues",
-  "homepage": "https://github.com/giovannipapini/gipi/tree/main/packages/gipi-spinner#readme",
+  "homepage": "https://github.com/giovannipapini/gipi/tree/main/pi-extensions/gipi-herdr-blocked#readme",
   "type": "module",
   "engines": {
     "node": ">=20"

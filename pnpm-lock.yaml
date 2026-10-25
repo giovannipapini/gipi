@@ -203,7 +203,7 @@ importers:
         specifier: ^4.4.3
         version: 4.6.7
 
-  packages/gipi-background:
+  pi-extensions/gipi-background:
     dependencies:
       '@earendil-works/pi-ai':
         specifier: '*'
@@ -224,13 +224,13 @@ importers:
         specifier: '*'
         version: 1.4.3
 
-  packages/gipi-dedup:
+  pi-extensions/gipi-dedup:
     dependencies:
       '@earendil-works/pi-coding-agent':
         specifier: '*'
         version: 1.4.0(@aws-sdk/credential-provider-node@3.972.88)(@smithy/signature-v4@5.7.4)(ws@8.22.0)(zod@4.6.7)
 
-  packages/gipi-docquery:
+  pi-extensions/gipi-docquery:
     dependencies:
       '@earendil-works/pi-coding-agent':
         specifier: '*'
@@ -242,15 +242,15 @@ importers:
         specifier: ^4.4.3
         version: 4.6.7
 
-  packages/gipi-herdr-blocked: {}
+  pi-extensions/gipi-herdr-blocked: {}
 
-  packages/gipi-namesession:
+  pi-extensions/gipi-namesession:
     dependencies:
       typebox:
         specifier: '*'
         version: 1.4.3
 
-  packages/gipi-rtk:
+  pi-extensions/gipi-rtk:
     dependencies:
       '@earendil-works/pi-coding-agent':
         specifier: '*'
@@ -259,7 +259,7 @@ importers:
         specifier: '*'
         version: 1.4.0
 
-  packages/gipi-safety:
+  pi-extensions/gipi-safety:
     dependencies:
       '@earendil-works/pi-coding-agent':
         specifier: '*'
@@ -268,9 +268,9 @@ importers:
         specifier: '*'
         version: 1.4.0
 
-  packages/gipi-spinner: {}
+  pi-extensions/gipi-spinner: {}
 
-  packages/gipi-statusbar:
+  pi-extensions/gipi-statusbar:
     dependencies:
       '@earendil-works/pi-coding-agent':
         specifier: '*'
@@ -279,9 +279,9 @@ importers:
         specifier: '*'
         version: 1.4.0
 
-  packages/gipi-themes: {}
+  pi-extensions/gipi-themes: {}
 
-  packages/gipi-webx:
+  pi-extensions/gipi-webx:
     dependencies:
       '@earendil-works/pi-ai':
         specifier: '*'

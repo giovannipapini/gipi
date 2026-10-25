@@ -12,9 +12,15 @@ Thanks for your interest in contributing to gipi!
 
 ## Development
 
-Every publishable unit lives in `packages/`: one directory per extension with an
-`index.ts` entry point, plus `packages/gipi-themes` for themes. Each directory is its
+Every publishable unit lives in `pi-extensions/`: one directory per extension with an
+`index.ts` entry point, plus `pi-extensions/gipi-themes` for themes. Each directory is its
 own package (`@giovannipapini/gipi-<name>`), so it can be installed on its own.
+
+Herdr plugins live in `herdr-plugins/` instead. They are plain manifest directories
+(`herdr-plugin.toml` + `.mjs`), never npm packages: link one with
+`herdr plugin link herdr-plugins/<name>`. Keeping the two trees separate is deliberate —
+`pi-extensions/` is what `pnpm build` bundles and release tags publish, `herdr-plugins/` is
+what Herdr launches.
 
 ```bash
 pnpm install
@@ -39,7 +45,7 @@ single `dist/index.js`, inlining `lib/` and leaving bare imports (pi peers,
 ```
 
 Rules for a new extension:
-- one directory under `packages/`, one `package.json`, one `index.ts` entry point
+- one directory under `pi-extensions/`, one `package.json`, one `index.ts` entry point
 - resource directories (`extensions/`, `themes/`) inside a package contain only
   resources — never a `package.json`, or pi will try to load the manifest as a resource
 - only declare dependencies the extension actually imports; pi packages are peers
@@ -49,7 +55,7 @@ Rules for a new extension:
 ## Releases
 
 Releases are per package, from `main`, and gated by CI.
-1. Bump `version` in that one package's `package.json` (e.g. `packages/gipi-rtk`).
+1. Bump `version` in that one package's `package.json` (e.g. `pi-extensions/gipi-rtk`).
 2. Commit and merge to `main` through a PR (the branch ruleset requires the
    `verify` check).
 3. Tag it: `git tag gipi-rtk@0.2.0 && git push origin gipi-rtk@0.2.0`.

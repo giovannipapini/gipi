@@ -17,10 +17,10 @@
   "type": "module",
   "pi": {
     "extensions": [
-      "./packages/*/index.ts"
+      "./pi-extensions/*/index.ts"
     ],
     "themes": [
-      "./packages/gipi-themes/themes/*.json"
+      "./pi-extensions/gipi-themes/themes/*.json"
     ]
   },
   "scripts": {

@@ -1,0 +1,25 @@
+id = "gipi.telegram-notify"
+name = "Telegram Notify"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Send a Telegram message when an agent blocks, unless you are already looking at that pane"
+platforms = ["linux", "macos"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["node", "notify.mjs"]
+
+[[actions]]
+id = "test"
+title = "Send Telegram test message"
+command = ["node", "notify.mjs", "--test"]
+
+[[actions]]
+id = "check"
+title = "Show Telegram notify configuration"
+command = ["node", "check.mjs"]
+
+[[actions]]
+id = "preview"
+title = "Preview the blocked message"
+command = ["node", "notify.mjs", "--dry-run"]

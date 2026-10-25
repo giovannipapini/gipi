@@ -1,7 +1,7 @@
 {
-  "name": "@giovannipapini/gipi-webx",
+  "name": "@giovannipapini/gipi-rtk",
   "version": "0.1.0",
-  "description": "Web search and crawl tools backed by Exa and Firecrawl",
+  "description": "Proxies eligible bash commands through rtk for large output token savings",
   "keywords": [
     "pi-package"
   ],
@@ -9,10 +9,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/giovannipapini/gipi.git",
-    "directory": "packages/gipi-webx"
+    "directory": "pi-extensions/gipi-rtk"
   },
   "bugs": "https://github.com/giovannipapini/gipi/issues",
-  "homepage": "https://github.com/giovannipapini/gipi/tree/main/packages/gipi-webx#readme",
+  "homepage": "https://github.com/giovannipapini/gipi/tree/main/pi-extensions/gipi-rtk#readme",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -33,12 +33,8 @@
   "scripts": {
     "prepublishOnly": "node -e \"process.env.CI === 'true' || (console.error('publish only from CI'), process.exit(1))\""
   },
-  "dependencies": {
-    "zod": "^4.4.3"
-  },
   "peerDependencies": {
-    "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
-    "typebox": "*"
+    "@earendil-works/pi-tui": "*"
   }
 }

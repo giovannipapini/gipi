@@ -9,10 +9,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/giovannipapini/gipi.git",
-    "directory": "packages/gipi-background"
+    "directory": "pi-extensions/gipi-background"
   },
   "bugs": "https://github.com/giovannipapini/gipi/issues",
-  "homepage": "https://github.com/giovannipapini/gipi/tree/main/packages/gipi-background#readme",
+  "homepage": "https://github.com/giovannipapini/gipi/tree/main/pi-extensions/gipi-background#readme",
   "type": "module",
   "engines": {
     "node": ">=20"

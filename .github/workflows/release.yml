@@ -1,8 +1,8 @@
 name: Release
 
 # Tag convention: <package-dir>@<version>, e.g.
-#   gipi-rtk@0.1.0        -> packages/gipi-rtk   -> @giovannipapini/gipi-rtk
-#   gipi-themes@0.1.0     -> packages/gipi-themes
+#   gipi-rtk@0.1.0        -> pi-extensions/gipi-rtk   -> @giovannipapini/gipi-rtk
+#   gipi-themes@0.1.0     -> pi-extensions/gipi-themes
 #
 # No npm token lives in this repository. Publishing authenticates through GitHub
 # OIDC (npm trusted publishing), so the only credential is the short-lived token

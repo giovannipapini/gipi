@@ -13,6 +13,6 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false
   },
-  "include": ["packages/**/*.ts", "packages/**/*.json"],
+  "include": ["pi-extensions/**/*.ts", "pi-extensions/**/*.json"],
   "exclude": ["node_modules"]
 }
