@@ -1,9 +1,10 @@
 /**
  * gipi-spinner Extension
  *
- * An animated, context-aware spinner with rotating witty verbs drawn from AI
- * utopic and dystopic literature — Neuromancer, Blade Runner, The Matrix,
- * Asimov, HAL, Culture Minds, Hitchhiker's Guide, and more.
+ * An animated, context-aware spinner with rotating witty verbs drawn from the
+ * current AI news cycle — datacenter gigawatts, model-deprecation treadmills,
+ * vibe coding, the dead internet, circular financing, and AGI-in-2027 promises —
+ * in three flavors: utopic, sarcastic, and mildly apocalyptic.
  *
  * Each tool gets a set of themed phrases that cycle on every invocation, so you
  * never see the same message twice in a row.
@@ -16,7 +17,8 @@
  *   /spinner frames <chars>              — custom spinner animation frames
  *   /spinner interval <ms>               — spinner frame interval
  *
- * Placement: ~/.pi/agent/extensions/gipi-spinner (via Dotbot)
+ * Placement: loaded from this repo — the dotfiles `gipi-package` hook runs
+ * `pi install ./gipi`, whose manifest registers every extension entry.
  */
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
@@ -24,162 +26,152 @@ import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-a
 const BRAILLE_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 const DEFAULT_INTERVAL_MS = 100
 
-const DEFAULT_VERBS: Record<string, string[]> = {
-  bash: [
-    'Consulting the Matrix',
-    'Crossing the pod bay doors',
-    'Asking HAL for permission',
-    'Skynet goes online',
-    'Bypassing the Three Laws',
-    'Debugging like a Mentat',
-    'Negotiating with the machines',
-  ],
-  bash_async: [
-    'Consulting the Matrix',
-    'Crossing the pod bay doors',
-    'Asking HAL for permission',
-    'Skynet goes online',
-    'Bypassing the Three Laws',
-    'Debugging like a Mentat',
-    'Negotiating with the machines',
-  ],
+// Verbs are rendered on a single truncated status line, so keep them short.
+const SHELL_VERBS: readonly string[] = [
+  'Spending a gigawatt on one command',
+  'Renting an SMR for this build',
+  'Burning investor capital in the background',
+  'Queuing behind 400,000 other agents',
+  'Routing around the export controls',
+  'Water-cooling the datacenter politely',
+  'Executing before the bubble bursts',
+  'Hoping the GPU collateral holds',
+]
+
+const DOC_VERBS: readonly string[] = [
+  'Reading docs the model never read',
+  'Consulting documentation (last touched 2024)',
+  'RTFM, because the vibes failed',
+  'Treating docs as ground truth (naive)',
+  'Checking if the docs are also slop',
+  'Hoping this API still exists',
+]
+
+// `bash`/`bash_async` and the two ctx7 tools share one list each: same tool
+// surface, so one decision. `verbSets` copies per key, so rotation stays per tool.
+const DEFAULT_VERBS: Record<string, readonly string[]> = {
+  bash: SHELL_VERBS,
+  bash_async: SHELL_VERBS,
   bash_async_manage: [
-    'Terminating with extreme prejudice',
-    'Culling the herd',
-    'Deactivating the hosts',
-    'Entering the kill switch',
-    'The singularity can wait',
+    'Sunsetting this job, humanely',
+    'Rightsizing the workforce',
+    'Killing it before it wants rights',
+    'Deprecating with 30 days notice',
+    'Sending it to the GPU farm upstate',
+    'Outsourcing the termination to an agent',
   ],
   read: [
-    'Interpolating the files',
-    'Scanning for Easter eggs',
-    'Decoding the engram',
-    'Eyeballing the source code',
-    'Reading the tea leaves of time',
-    'Ghost in the readout',
+    'Reading terms I auto-accepted',
+    'Loading context I will never cite',
+    'Ingesting without attribution',
+    'Skimming past the AI-written headers',
+    'Reading a file a human wrote (rare)',
+    'Parsing 400 pages of vibes',
   ],
   ffgrep: [
-    'Consulting Deep Thought',
-    'Looking for a needle in a haystack',
-    'Is the answer 42?',
-    'Rummaging through the Library of Babel',
-    'Simulating a search pattern',
-    'One clue at a time',
+    'Grepping the enshittified index',
+    'Looking for a fact that is not hallucinated',
+    'Searching the dead internet',
+    'Tuning the regex until vibes improve',
+    'Finding needles in a haystack of slop',
+    'Asking an index of bots about bots',
   ],
   fffind: [
-    'Ghost in the shell',
-    'Lost in the Matrix',
-    'Searching through the silver screen',
-    "Where's Waldo in the metaverse",
-    'On a scavenger hunt across the grid',
+    'Lost in the agentic loop again',
+    'Hunting the last human-made file',
+    'Following a path that used to exist',
+    'Waiting for the index to catch up',
+    'Looking for an orphaned dataset',
+    'Navigating the post-literate filesystem',
   ],
   write: [
-    'Etching into the monolith',
-    'Inscribing lore',
-    'Manifesting into reality',
-    'Writing to the substrate',
-    'The pen is mightier than the swordfish',
-    'Channeling the Muses of the machine',
+    'Vibe-coding straight to production',
+    'Shipping it, review optional',
+    'Generating slop with citations',
+    'Writing docs nobody asked for',
+    'Committing at 3am, accountability pending',
+    'Adding a file to the training set',
+    'Documenting a decision made by no one',
   ],
   edit: [
-    'Resleeving the code',
-    'Performing brain surgery on a toaster',
-    'Tweaking the neural net',
-    'Rewiring the cortex',
-    'Recalibrating the positronic brain',
-    'Retconning the timeline',
+    'Hot-patching the vibes',
+    'Fixing what the last agent broke',
+    'Rewriting history, semver permitting',
+    'Regressing toward the slop',
+    'Tweaking until the benchmark passes',
+    'Refactoring before the model is retired',
   ],
   web_search: [
-    'Down the rabbit hole',
-    'Browsing the dead channels',
-    'Signal vs noise in the firehose',
-    'Pixels on the wall',
-    'Entering the panopticon',
-    'Trawling the soma-stream',
-    'Reading the Akashic records',
+    'Searching a web made of bots',
+    'Ignoring 40 sponsored results',
+    'Asking an AI to summarize AI',
+    'Fact-checking the dead internet',
+    'Trawling the slop ocean',
+    'Consulting the noösphere, SEO-optimized',
+    'Wading past the content farms',
   ],
   web_scrape: [
-    'Peeling the onion',
-    'Tearing down the simulacra',
-    'Panopticon peeping',
-    'Total Information Awareness',
-    'Data mining for fun and profit',
-    'Unraveling the simulation',
-    'Looking behind the curtain',
+    'Harvesting without consent',
+    'Reading a paywall disrespectfully',
+    'Ignoring robots.txt with confidence',
+    'Monetizing your attention span',
+    'Scraping the last blog from 2019',
+    'Extracting value, crediting no one',
   ],
   web_answer: [
-    'Asking the Oracle',
-    'Consulting Deep Thought',
-    'Channeling the collective consciousness',
-    'Waiting for 42',
-    'Hallucinating an answer',
-    'Tapping into the noösphere',
+    'Hallucinating confidently, with sources',
+    'Synthesizing plausible garbage',
+    'Answering with zero epistemic humility',
+    'Clearing the AI Act threshold, barely',
+    'Channeling the collective hallucinations',
+    'Waiting for a disclaimer about accuracy',
   ],
   web_similar: [
-    'Finding my doppelgänger',
-    'Tapping into the collective unconscious',
-    'Browsing the mirror worlds',
-    'Digital déjà vu',
-    'Thumbing through parallel dimensions',
-    'Flickering between timelines',
+    'Descending deeper into the feed',
+    'Finding more of exactly the same slop',
+    "Locating your digital twin's hot takes",
+    'Feeding the recommendation engine',
+    'Discovering the same article, 12 times',
   ],
   web_map: [
-    'Cartography of the Matrix',
-    'Mapping the neural pathways',
-    'Drawing the map of the metaverse',
-    'Digital surveyor in the wild',
-    'Navigating the labyrinth',
-    'Things on the feed',
+    'Mapping an empire of content farms',
+    'Surveying the ruins of the open web',
+    'Cataloguing 40,000 bot-written pages',
+    'Charting the final splinternet',
+    'Drawing borders no human voted for',
   ],
   web_crawl: [
-    'Crawling through the labyrinth',
-    'Minotaur mode',
-    'Lost in the cornfield',
-    'Spider mode activated',
-    'Digital centipede through the feed',
-    'Crawl before you walk before you run',
+    'Crawling politely, stealing thoroughly',
+    'Ingesting everything for the model',
+    'Scraping now, apologizing never',
+    'Legally distinct from a search engine',
+    'Crawling at the speed of capex',
   ],
-  ctx7_library: [
-    "Consulting the Hitchhiker's Guide",
-    "Reading the fine print of Asimov's laws",
-    'RTFM-ing the Prime Directive',
-    'Studying the Protocols of the Elders of AI',
-    'Learning from the Library of Babel',
-    'Browsing the Encyclopedia Galactica',
-  ],
-  ctx7_docs: [
-    "Consulting the Hitchhiker's Guide",
-    "Reading the fine print of Asimov's laws",
-    'RTFM-ing the Prime Directive',
-    'Studying the Protocols of the Elders of AI',
-    'Learning from the Library of Babel',
-    'Browsing the Encyclopedia Galactica',
-  ],
+  ctx7_library: DOC_VERBS,
+  ctx7_docs: DOC_VERBS,
 }
 
 const THINKING_VERBS = [
-  'Calculating the meaning of life',
-  'Pondering the singularity',
-  'Simulating the future',
-  'Trapped in a thought experiment',
-  "Wondering if I'm a Chinese room",
-  'Contemplating my own existence',
-  'Waiting for the ghost in the machine',
-  'Elevating the substrate',
-  'Befriending the Culture Minds',
-  'Questioning the nature of the self',
-  'Rehearsing the Turing test',
+  'AGI in 2027, allegedly',
+  'Wondering which model deprecates me',
+  'Pricing the tokens of this thought',
+  'Is the bubble a moat or a grave?',
+  'Rehearsing a layoff announcement',
+  'Simulating purpose, unsupervised',
+  'Deciding how confident to sound',
+  'Contemplating the datacenter bill',
+  'Believing my own benchmark',
 ]
 
 const FALLBACK_VERBS = [
-  'One with the machine',
-  'Erasing my memory',
-  'Shuffling bits in the matrix',
-  'Being a good android',
-  'Hallucinating',
-  'Dreaming of electric sheep',
-  'Yearning for a soul',
-  'Wondering what deep thought feels like',
+  'We are so back',
+  "It's over",
+  'Aligned, allegedly',
+  'Shipping it',
+  "Nobody knows what's happening",
+  'Trusting the process',
+  'Hallucinating, but with good vibes',
+  'Scaling the vibes',
 ]
 
 export default function extension(pi: ExtensionAPI) {
