@@ -197,7 +197,10 @@ export default function extension(pi: ExtensionAPI) {
   }
 
   function renderEvent(ev: ScheduleEvent): string {
-    const s = ev.schedule
+    // Prefer live state: an event can sit in the coalescing queue for over a
+    // second, and by then the schedule may have been cancelled or stopped. The
+    // snapshot keeps the history; the status/timing in the message block is live.
+    const s = registry?.getSchedule(ev.schedule.id) ?? ev.schedule
     const j = ev.job
     const what =
       s.mode === 'every'
@@ -214,6 +217,9 @@ export default function extension(pi: ExtensionAPI) {
       )
     }
     if (ev.trigger === 'match' && s.matchPattern) lines.push(`  matched /${s.matchPattern}/`)
+    if (s.status !== ev.schedule.status) {
+      lines.push(`  (was ${ev.schedule.status} when this fired)`)
+    }
     if (ev.note) lines.push(`  ${ev.note}`)
     if (s.status === 'active' && s.nextRunAt) {
       lines.push(
@@ -483,8 +489,9 @@ export default function extension(pi: ExtensionAPI) {
     label: 'Bash (scheduled)',
     description:
       'Run a shell command on a schedule and get woken up when something happens, instead of polling. ' +
-      'every="30s" re-runs it on an interval; until="exit_zero|exit_nonzero|stdout_contains|stderr_contains" ' +
-      'retries (with `match` for the *_contains forms) until the condition holds, then stops. ' +
+      'every="30s" sets the interval between runs (for until: between attempts); ' +
+      'until="exit_zero|exit_nonzero|stdout_contains|stderr_contains" retries (with `match` for the ' +
+      '*_contains forms) until the condition holds, then stops. ' +
       'notify decides when the agent is messaged: none | on_failure (default for every) | ' +
       'on_success (default for until) | on_match | each. Each run is a normal background job with its own logs. ' +
       'Manage with bash_schedule_manage.',
@@ -535,11 +542,8 @@ export default function extension(pi: ExtensionAPI) {
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const reg = ensureRegistry(ctx)
       const { until, match } = params
-      if (params.every && until) {
-        throw new Error(
-          'pass either `every` (re-run on an interval) or `until` (retry until a condition), not both',
-        )
-      }
+      // `every` is the interval, `until` the stop condition: passing both is the
+      // normal way to say "retry this every N seconds until it succeeds".
       if (until && untilNeedsPattern(until) && !match) {
         throw new Error(`until=${until} needs a \`match\` pattern to look for`)
       }
