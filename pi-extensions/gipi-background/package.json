@@ -1,9 +1,11 @@
 {
   "name": "@giovannipapini/gipi-background",
   "version": "0.1.1",
-  "description": "Long-running background job manager for pi (tmux-style process pools)",
+  "description": "Background jobs, interval/retry-until schedules, and wake-up callbacks for pi",
   "keywords": [
-    "pi-package"
+    "pi-package",
+    "background-jobs",
+    "scheduler"
   ],
   "license": "MIT",
   "repository": {

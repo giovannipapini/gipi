@@ -60,6 +60,20 @@ const DEFAULT_VERBS: Record<string, readonly string[]> = {
     'Sending it to the GPU farm upstate',
     'Outsourcing the termination to an agent',
   ],
+  bash_schedule: [
+    'Automating the job that automates me',
+    'Scheduling a loop nobody asked for',
+    'Setting a cron for the heat death',
+    'Retrying until the vibes commit',
+    'Delegating patience to a timer',
+    'Outsourcing the waiting to a machine',
+  ],
+  bash_schedule_manage: [
+    'Auditing my own automation',
+    'Reading the schedule I forgot about',
+    'Pulling the plug on future me',
+    'Cancelling a loop with confidence',
+  ],
   read: [
     'Reading terms I auto-accepted',
     'Loading context I will never cite',

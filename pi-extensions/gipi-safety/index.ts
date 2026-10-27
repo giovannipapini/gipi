@@ -61,9 +61,14 @@ function resolveToolPath(ctx: ExtensionContext, path: string): string {
 export default function (pi: ExtensionAPI) {
   const pluginSessions = new Map(PLUGINS.map((p) => [p.name, new Map<string, string>()]))
 
+  // Every tool that runs a shell command a human might regret: guarded at the
+  // point the model writes it. `bash_schedule` is guarded when the schedule is
+  // created — its later runs re-spawn in-process and do not re-enter tool_call,
+  // so creation time is the one place a guard can land.
   const SHELL_TOOLS = new Map<string, ShellConfig>([
     ['bash', { cwdOf: (toolInput) => stringInput(toolInput, 'cwd'), envOf: stringEnv }],
     ['bash_async', { cwdOf: (toolInput) => stringInput(toolInput, 'cwd'), envOf: stringEnv }],
+    ['bash_schedule', { cwdOf: (toolInput) => stringInput(toolInput, 'cwd'), envOf: stringEnv }],
   ])
 
   const FILE_TOOLS = new Map<string, FileConfig>([
@@ -177,7 +182,9 @@ export default function (pi: ExtensionAPI) {
 
     if (shellConfig) {
       const command =
-        isToolCallEventType('bash', event) || isToolCallEventType('bash_async', event)
+        isToolCallEventType('bash', event) ||
+        isToolCallEventType('bash_async', event) ||
+        isToolCallEventType<'bash_schedule', { command: string }>('bash_schedule', event)
           ? event.input.command
           : stringInput(toolInput, 'command')
       if (!command) return

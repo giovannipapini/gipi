@@ -15,7 +15,7 @@ daily driver setup.
 
 | Extension              | Description                                                                                                                             |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **gipi-background**    | Long-running background job manager (tmux-style process pools)                                                                          |
+| **gipi-background**    | Background jobs, intervals and retry-until schedules, with wake-up callbacks into the agent                                             |
 | **gipi-dedup**         | Deduplicates read/edit tool output to reduce noise                                                                                      |
 | **gipi-herdr-blocked** | Marks pi `blocked` in Herdr while any blocking UI prompt (ask_user_question, gipi-safety confirmations, extension dialogs) awaits input |
 | **gipi-namesession**   | Names every session at t0 (`π · <project>`), then auto-renames it via the LLM after the first exchange                                  |

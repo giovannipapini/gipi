@@ -346,14 +346,18 @@ export default function extension(pi: ExtensionAPI) {
     ctx.ui.setStatus('gipi-rtk', undefined)
   })
 
-  /** Intercept bash/bash_async and proxy through rtk. The command is mutated
-   * in-place so the LLM never sees the prefix; cache avoids repeated rewrites. */
+  /** Intercept bash/bash_async/bash_schedule and proxy through rtk. The command
+   * is mutated in-place so the LLM never sees the prefix; cache avoids repeated
+   * rewrites. For `bash_schedule` the rewrite happens once, at creation — every
+   * later run reuses the stored (already proxied) command string. */
   pi.on('tool_call', async (event, _ctx) => {
     if (!enabled || !rtkAvailable) return
 
     // Extract command from bash or bash_async using the same pattern as gipi-safety
     const command =
-      isToolCallEventType('bash', event) || isToolCallEventType('bash_async', event)
+      isToolCallEventType('bash', event) ||
+      isToolCallEventType('bash_async', event) ||
+      isToolCallEventType<'bash_schedule', { command: string }>('bash_schedule', event)
         ? (event.input as { command: string }).command
         : undefined
     if (!command) return
